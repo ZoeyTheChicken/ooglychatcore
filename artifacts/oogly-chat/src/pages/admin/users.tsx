@@ -44,7 +44,10 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   
   const [page, setPage] = useState(1);
-  const { data, refetch } = useListUsers({ search, page });
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const { data, refetch } = useListUsers({ search, page: 1 });
   const users = data?.users || [];
   const { toast } = useToast();
 
@@ -55,9 +58,42 @@ export default function AdminUsers() {
   const [durationAmount, setDurationAmount] = useState(1);
   const totalPages = data?.totalPages || 1;
 
-  useEffect(() => {
+useEffect(() => {
   setPage(1);
+  setAllUsers([]);
+  setHasMore(true);
 }, [search]);
+
+useEffect(() => {
+  if (!data?.users) return;
+
+  setAllUsers(data.users);
+
+  if (data.users.length < 25) {
+    setHasMore(false);
+  }
+}, [data]);
+
+const loadMore = async () => {
+  if (loadingMore || !hasMore) return;
+
+  setLoadingMore(true);
+
+  const nextPage = page + 1;
+
+  const res = await useListUsers({ search, page: nextPage });
+
+  const newUsers = res?.users || [];
+
+  setAllUsers((prev) => [...prev, ...newUsers]);
+  setPage(nextPage);
+
+  if (newUsers.length < 25) {
+    setHasMore(false);
+  }
+
+  setLoadingMore(false);
+};
 
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
@@ -169,7 +205,7 @@ export default function AdminUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((u) => (
+              {allUsers.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">#{u.id}</TableCell>
                   <TableCell className="font-medium">{u.username}</TableCell>
@@ -219,27 +255,13 @@ export default function AdminUsers() {
               )}
             </TableBody>
           </Table>
-          <div className="flex items-center justify-between mt-4">
-  <Button
-    variant="outline"
-    disabled={page <= 1}
-    onClick={() => setPage((p) => p - 1)}
-  >
-    Previous
-  </Button>
-
-  <span className="text-sm text-muted-foreground">
-    Page {page} of {totalPages}
-  </span>
-
-  <Button
-    variant="outline"
-    disabled={page >= totalPages}
-    onClick={() => setPage((p) => p + 1)}
-  >
-    Next
-  </Button>
-</div>
+          {hasMore && (
+  <div className="flex justify-center mt-4">
+    <Button onClick={loadMore} disabled={loadingMore}>
+      {loadingMore ? "Loading..." : "Load more"}
+    </Button>
+  </div>
+)}
         </div>
 
         <Dialog open={banDialog.open} onOpenChange={(open) => { if (!open) { setBanDialog({ open: false, userId: null, username: "" }); resetDialog(); } }}>
