@@ -1,22 +1,28 @@
-// 🚀 Universal Frontend WebSocket Interceptor Override
+// 🚀 Self-Cleaning Global WebSocket Interceptor
 if (typeof window !== "undefined") {
   const OriginalWebSocket = window.WebSocket;
-  
-  // Hijack the native browser WebSocket constructor globally
+
   window.WebSocket = function (url, protocols) {
-    if (typeof url === "string") {
-      // If it tries to hit Vercel, force it to your DigitalOcean Droplet
-      if (url.includes("ooglychatlearning.vercel.app") || url.startsWith("ws://") || url.startsWith("wss://")) {
-        console.log("⚡ Intercepted WebSocket connection! Rerouting to DigitalOcean Droplet...");
+    // If the incoming URL is empty or corrupted, catch it before it can crash the tab
+    let finalUrl = "wss://://zoeyaviation.com";
+
+    if (typeof url === "string" && url.trim().length > 0) {
+      // If it looks like a valid target domain, clean out any double-protocol symbols
+      if (!url.includes("ooglychatlearning.vercel.app")) {
+        // Strip out bad prefix symbols, formatting it down to a clean domain string
+        let cleanInput = url.replace(/^wss?:\/\//i, "").replace(/^\/\//, "").replace(/^:/, "");
         
-        // Force the destination to use your secure backend subdomain and your required path
-        url = "wss://://zoeyaviation.com";
+        // If the resulting clean domain points to your backend server, apply it safely
+        if (cleanInput.includes("zoeyaviation.com")) {
+          finalUrl = `wss://${cleanInput}`;
+        }
       }
     }
-    return new OriginalWebSocket(url, protocols);
+
+    console.log("⚡ WebSocket Router Sync Target:", finalUrl);
+    return new OriginalWebSocket(finalUrl, protocols);
   } as any;
 }
-
 
 import { createRoot } from "react-dom/client";
 import App from "./App";
