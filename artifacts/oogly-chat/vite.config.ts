@@ -5,6 +5,7 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = "8080"
+const BASE_PATH = "/"
 
 if (!rawPort) {
   throw new Error(
