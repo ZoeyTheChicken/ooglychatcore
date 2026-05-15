@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWs } from "@/contexts/WsContext";
 import { 
   useListMessages, 
   useSendMessage, 
@@ -7,21 +8,22 @@ import {
   useAddReaction,
   useRemoveReaction,
   useListAnnouncements,
+  getListMessagesQueryKey,
 } from "@workspace/api-client-react";
 import type { Message } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChatLayout } from "@/components/layout/ChatLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Reply, X, Trash2, SmilePlus, Info, Wifi, WifiOff, Copy, Check } from "lucide-react";
+import { Send, Reply, X, Trash2, SmilePlus, Info, Copy, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉"];
+const MSG_QUERY_PARAMS = { limit: 50 };
 
-// Linkify URLs in text
 function linkify(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -32,17 +34,12 @@ function linkify(text: string) {
   );
 }
 
-// Detect image URLs
 function isImageUrl(text: string) {
   return /^https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(text.trim());
 }
 
-// Parse /me and bold (**text**)
 function renderContent(text: string, isMe: boolean) {
-  if (isMe) {
-    return <em className="text-primary/80 not-italic">* {text.slice(4)}</em>;
-  }
-  // Bold: **text**
+  if (isMe) return <em className="text-primary/80 not-italic">* {text.slice(4)}</em>;
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
     <>
@@ -57,23 +54,21 @@ function renderContent(text: string, isMe: boolean) {
 
 export default function ChatView() {
   const { user, isAdmin, isOwner } = useAuth();
+  const { subscribe, sendWsMessage } = useWs();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
   const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypeSentRef = useRef(0);
+  const initialScrollDone = useRef(false);
 
-  const { data: messages = [], refetch } = useListMessages(
-    { limit: 50 },
-    { query: { refetchInterval: wsConnected ? false : 5000 } }
-  );
+  const { data: messages = [], refetch } = useListMessages(MSG_QUERY_PARAMS, {
+    query: { refetchInterval: false }
+  });
 
   const { data: announcements = [] } = useListAnnouncements();
   const latestAnnouncement = announcements[0];
@@ -88,94 +83,79 @@ export default function ChatView() {
   const removeReactionMutation = useRemoveReaction();
 
   const scrollToBottom = useCallback((force = false) => {
-    if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+    if (!el) return;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
     if (force || isAtBottom) el.scrollTop = el.scrollHeight;
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  // Force scroll on first message load
+  useEffect(() => {
+    if (messages.length > 0 && !initialScrollDone.current) {
+      initialScrollDone.current = true;
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }, 50);
+    }
+  }, [messages]);
 
-  // Clear typing indicators after 4s
+  // Clear stale typing indicators
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = Date.now();
       setTypingUsers((prev) => {
+        const now = Date.now();
         const next = new Map(prev);
         for (const [k, ts] of next) {
           if (now - ts > 4000) next.delete(k);
         }
-        return next;
+        return next.size !== prev.size ? next : prev;
       });
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const connectWs = useCallback(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const base = (import.meta.env.BASE_URL ?? "").replace(/\/$/, "");
-    const url = `${protocol}//${window.location.host}${base}/api/ws`;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setWsConnected(true);
-      if (reconnectRef.current) { clearTimeout(reconnectRef.current); reconnectRef.current = null; }
-    };
-
-    ws.onmessage = (evt) => {
-      try {
-        const event = JSON.parse(evt.data);
-        switch (event.type) {
-          case "new_message":
-            queryClient.setQueryData(["listMessages", { limit: 50 }], (old: Message[] | undefined) => {
-              const prev = old ?? [];
-              if (prev.some((m) => m.id === event.payload.id)) return prev;
-              return [event.payload, ...prev];
-            });
-            scrollToBottom();
-            break;
-          case "delete_message":
-            queryClient.setQueryData(["listMessages", { limit: 50 }], (old: Message[] | undefined) =>
-              (old ?? []).map((m) => m.id === event.payload.id ? { ...m, deleted: true, content: "[deleted]" } : m)
-            );
-            break;
-          case "reaction_update":
-            refetch();
-            break;
-          case "typing":
-            if (event.payload.username !== user?.username) {
-              setTypingUsers((prev) => new Map(prev).set(event.payload.username, event.payload.timestamp));
-            }
-            break;
-          case "troll_effect":
-            if (event.payload.targetUsername === user?.username) {
-              setActiveTroll(event.payload.effect as TrollEffect);
-            }
-            break;
-        }
-      } catch {}
-    };
-
-    ws.onclose = () => { setWsConnected(false); wsRef.current = null; reconnectRef.current = setTimeout(connectWs, 3000); };
-    ws.onerror = () => ws.close();
-  }, [queryClient, refetch, scrollToBottom, user?.username]);
-
+  // Subscribe to WebSocket events
   useEffect(() => {
-    connectWs();
-    return () => {
-      if (reconnectRef.current) clearTimeout(reconnectRef.current);
-      if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); }
-    };
-  }, [connectWs]);
+    const unsubscribe = subscribe((event) => {
+      switch (event.type) {
+        case "new_message":
+          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) => {
+            const prev = old ?? [];
+            if (prev.some((m) => m.id === event.payload.id)) return prev;
+            return [event.payload, ...prev];
+          });
+          setTimeout(() => scrollToBottom(), 50);
+          break;
+        case "delete_message":
+          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) =>
+            (old ?? []).map((m) => m.id === event.payload.id ? { ...m, deleted: true, content: "[deleted]" } : m)
+          );
+          break;
+        case "reaction_update":
+          refetch();
+          break;
+        case "typing":
+          if (event.payload.username !== user?.username) {
+            setTypingUsers((prev) => new Map(prev).set(event.payload.username, event.payload.timestamp));
+          }
+          break;
+        case "troll_effect":
+          if (event.payload.targetUsername === user?.username || event.payload.targetUsername === "*") {
+            setActiveTroll(event.payload.effect as TrollEffect);
+          }
+          break;
+      }
+    });
+    return unsubscribe;
+  }, [subscribe, queryClient, refetch, scrollToBottom, user?.username]);
 
   const sendTyping = useCallback(() => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !user?.username) return;
+    if (!user?.username) return;
     const now = Date.now();
     if (now - lastTypeSentRef.current < 2000) return;
     lastTypeSentRef.current = now;
-    wsRef.current.send(JSON.stringify({ type: "typing", payload: { username: user.username } }));
-  }, [user?.username]);
+    sendWsMessage({ type: "typing", payload: { username: user.username } });
+  }, [user?.username, sendWsMessage]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,7 +166,7 @@ export default function ChatView() {
         onSuccess: (msg) => {
           setContent("");
           setReplyTo(null);
-          queryClient.setQueryData(["listMessages", { limit: 50 }], (old: Message[] | undefined) => {
+          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) => {
             const prev = old ?? [];
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [msg, ...prev];
@@ -218,18 +198,6 @@ export default function ChatView() {
     <ChatLayout>
       <TrollOverlay effect={activeTroll} onDone={() => setActiveTroll(null)} />
 
-      {/* Status bar */}
-      <div className={`px-4 py-0.5 text-xs flex items-center gap-1.5 border-b transition-colors ${wsConnected ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"}`}>
-        {wsConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-        {wsConnected ? "Live" : "Reconnecting..."}
-        {typingList.length > 0 && (
-          <span className="ml-3 text-muted-foreground flex items-center gap-1.5">
-            <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
-            <span>{typingList.slice(0, 3).join(", ")} {typingList.length === 1 ? "is" : "are"} typing…</span>
-          </span>
-        )}
-      </div>
-
       {latestAnnouncement && dismissedAnnouncement !== latestAnnouncement.id && (
         <div className="bg-primary/10 border-b border-primary/20 px-4 py-2.5 flex items-start gap-3">
           <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
@@ -238,12 +206,11 @@ export default function ChatView() {
         </div>
       )}
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
         <div className={`max-w-4xl mx-auto flex flex-col justify-end min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
           {[...messages].reverse().map((msg) => {
             const isOwn = msg.authorId === user?.id;
             const canDelete = isOwn || isAdmin || isOwner;
-            const isTroll = (msg as any).metadata?.troll === true;
             const isMe = msg.content.startsWith("/me ");
             const imageUrl = isImageUrl(msg.content) ? msg.content.trim() : null;
 
@@ -254,9 +221,9 @@ export default function ChatView() {
             if (isCompact) {
               return (
                 <div key={msg.id} className="flex items-baseline gap-2 group py-0.5 hover:bg-muted/30 px-2 rounded">
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">{format(new Date(msg.createdAt), "HH:mm")}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">{format(new Date(msg.createdAt), "h:mm a")}</span>
                   <span className={`font-semibold text-sm shrink-0 ${isMe ? "text-muted-foreground" : "text-primary"}`}>{isMe ? "" : `${msg.authorUsername}:`}</span>
-                  <span className={`text-sm break-words flex-1 ${isTroll ? "troll-message" : ""}`}>{renderContent(msg.content, isMe)}</span>
+                  <span className="text-sm break-words flex-1">{renderContent(msg.content, isMe)}</span>
                   <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyMessage(msg.id, msg.content)}>{copiedId === msg.id ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}</Button>
                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setReplyTo(msg)}><Reply className="w-3 h-3" /></Button>
@@ -286,10 +253,10 @@ export default function ChatView() {
                       {imageUrl ? (
                         <img src={imageUrl} alt="img" className="rounded max-w-[280px] max-h-64 object-contain" />
                       ) : (
-                        <div className={`text-sm break-words whitespace-pre-wrap ${isTroll ? "troll-message" : ""}`}>{renderContent(msg.content, false)}</div>
+                        <div className="text-sm break-words whitespace-pre-wrap">{renderContent(msg.content, false)}</div>
                       )}
                       <div className={`text-[10px] mt-1 opacity-60 ${isOwn ? "text-right" : "text-left"}`} title={new Date(msg.createdAt).toLocaleString()}>
-                        {format(new Date(msg.createdAt), "HH:mm")}
+                        {format(new Date(msg.createdAt), "h:mm a")}
                       </div>
                     </div>
                     
@@ -323,8 +290,15 @@ export default function ChatView() {
               </div>
             );
           })}
+
+          {typingList.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
+              <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+              <span>{typingList.slice(0, 3).join(", ")} {typingList.length === 1 ? "is" : "are"} typing…</span>
+            </div>
+          )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="p-4 bg-background border-t border-border">
         {replyTo && (
@@ -342,7 +316,7 @@ export default function ChatView() {
             <Input
               value={content}
               onChange={(e) => { setContent(e.target.value); sendTyping(); }}
-              placeholder={user?.isMuted ? "You are muted" : "Message… (try /me, **bold**, or paste an image URL)"}
+              placeholder={user?.isMuted ? "You are muted" : "Message… (/me, **bold**, or paste an image URL)"}
               disabled={user?.isMuted || sendMutation.isPending}
               className="flex-1 bg-input border-transparent focus-visible:ring-1 rounded-2xl pr-14"
               autoFocus
@@ -359,7 +333,7 @@ export default function ChatView() {
           </Button>
         </form>
         <p className="text-[10px] text-muted-foreground/50 mt-1.5 text-center max-w-4xl mx-auto">
-          <strong>/me</strong> for actions · <strong>**bold**</strong> · paste image URL for inline preview
+          <strong>/me</strong> for actions · <strong>**bold**</strong> · paste an image URL for inline preview
         </p>
       </div>
     </ChatLayout>

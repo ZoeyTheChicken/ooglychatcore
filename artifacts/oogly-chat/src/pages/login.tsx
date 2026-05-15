@@ -22,10 +22,7 @@ export default function Login() {
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
+    defaultValues: { username: "", password: "" },
   });
 
   const loginMutation = useLogin();
@@ -54,7 +51,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center text-primary">Oogly Chat</CardTitle>
-          <CardDescription className="text-center">Enter your credentials to access the cockpit</CardDescription>
+          <CardDescription className="text-center">Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -86,7 +83,7 @@ export default function Login() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-login">
-                {loginMutation.isPending ? "Connecting..." : "Login"}
+                {loginMutation.isPending ? "Signing in…" : "Login"}
               </Button>
             </form>
           </Form>
