@@ -4,13 +4,18 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+// Oogly Chat uses an external Neon.tech PostgreSQL database.
+// Set DATABASE_URL to your Neon connection string, e.g.:
+// postgresql://user:password@ep-xxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+const DATABASE_URL =
+  process.env.DATABASE_URL ??
+  "postgresql://PLACEHOLDER:PLACEHOLDER@ep-PLACEHOLDER.us-east-2.aws.neon.tech/neondb?sslmode=require";
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

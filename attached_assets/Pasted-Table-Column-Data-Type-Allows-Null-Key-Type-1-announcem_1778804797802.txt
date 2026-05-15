@@ -1,0 +1,59 @@
+Table	Column	Data Type	Allows Null?	Key Type
+1	announcements	id	integer	NO	PRIMARY KEY
+2	announcements	content	text	NO	
+3	announcements	author_id	integer	NO	
+4	announcements	created_at	timestamp with time zone	NO	
+5	appeals	id	integer	NO	PRIMARY KEY
+6	appeals	user_id	integer	NO	
+7	appeals	message	text	NO	
+8	appeals	is_read	boolean	NO	
+9	appeals	is_dismissed	boolean	NO	
+10	appeals	created_at	timestamp with time zone	NO	
+11	bans	id	integer	NO	PRIMARY KEY
+12	bans	user_id	integer	NO	
+13	bans	banned_by_id	integer	YES	
+14	bans	reason	text	NO	
+15	bans	is_permanent	boolean	NO	
+16	bans	expires_at	timestamp with time zone	YES	
+17	bans	created_at	timestamp with time zone	NO	
+18	messages	id	integer	NO	PRIMARY KEY
+19	messages	content	text	NO	
+20	messages	author_id	integer	NO	
+21	messages	deleted	boolean	NO	
+22	messages	created_at	timestamp with time zone	NO	
+23	messages	reply_to_id	integer	YES	
+24	messages	reply_to_content	text	YES	
+25	messages	reply_to_username	text	YES	
+26	moderation_logs	id	integer	NO	PRIMARY KEY
+27	moderation_logs	admin_id	integer	YES	
+28	moderation_logs	admin_username	text	NO	
+29	moderation_logs	target_user_id	integer	YES	
+30	moderation_logs	target_username	text	YES	
+31	moderation_logs	action	text	NO	
+32	moderation_logs	reason	text	YES	
+33	moderation_logs	metadata	jsonb	YES	
+34	moderation_logs	created_at	timestamp with time zone	NO	
+35	mutes	id	integer	NO	PRIMARY KEY
+36	mutes	user_id	integer	NO	
+37	mutes	muted_by_id	integer	YES	
+38	mutes	reason	text	NO	
+39	mutes	is_permanent	boolean	NO	
+40	mutes	expires_at	timestamp with time zone	YES	
+41	mutes	created_at	timestamp with time zone	NO	
+42	reactions	id	integer	NO	PRIMARY KEY
+43	reactions	message_id	integer	NO	
+44	reactions	user_id	integer	NO	
+45	reactions	emoji	text	NO	
+46	reactions	created_at	timestamp with time zone	NO	
+47	users	id	integer	NO	PRIMARY KEY
+48	users	username	text	NO	
+49	users	password_hash	text	NO	
+50	users	is_admin	boolean	NO	
+51	users	theme	text	YES	
+52	users	notifications_enabled	boolean	YES	
+53	users	sounds_enabled	boolean	YES	
+54	users	compact_mode	boolean	YES	
+55	users	last_seen	timestamp with time zone	YES	
+56	users	created_at	timestamp with time zone	NO	
+57	users	is_owner	boolean	NO	
+58	users	is_muted	boolean	NO	
