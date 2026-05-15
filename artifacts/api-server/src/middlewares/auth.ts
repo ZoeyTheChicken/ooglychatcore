@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { bansTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { userInfo } from "node:os";
 
 // Simple in-memory session store: token -> userId
 // In production, use Redis or a DB-backed session table
@@ -42,13 +44,27 @@ export async function requireAuth(
     res.status(401).json({ error: "User not found" });
     return;
   }
+  const [activeBan] = await db
+  .select()
+  .from(bansTable)
+  .where(eq(bansTable.userId, user.id));
 
   // Update last seen
   await db
     .update(usersTable)
     .set({ lastSeen: new Date() })
     .where(eq(usersTable.id, userId));
+  if (activeBan) {
+    sessions.delete(token);
 
+    res.status(403).json({
+      banned: true,
+      reason: activeBan.reason,
+      expiresAt: activeBan.expiresAt
+    });
+
+    return;
+  }
   req.currentUser = user;
   next();
 }
