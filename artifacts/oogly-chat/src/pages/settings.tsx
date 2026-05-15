@@ -5,15 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
   const updateSettings = useUpdateSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const handleUpdate = (data: any) => {
     updateSettings.mutate(
@@ -33,9 +37,14 @@ export default function Settings() {
   return (
     <ChatLayout>
       <div className="max-w-2xl mx-auto w-full p-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your preferences and appearance</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/")} className="shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+            <p className="text-muted-foreground">Manage your preferences and appearance</p>
+          </div>
         </div>
 
         <Card>
@@ -104,6 +113,10 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        <Button variant="outline" className="w-full" onClick={() => setLocation("/")}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Chat
+        </Button>
       </div>
     </ChatLayout>
   );

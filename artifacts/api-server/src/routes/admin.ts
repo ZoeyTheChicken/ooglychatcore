@@ -4,6 +4,9 @@ import { eq, gt, and, or, gte, count, sql } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { checkFilter } from "../lib/swear-filter";
 import { CheckFilterBody } from "@workspace/api-zod";
+import { broadcast } from "../lib/ws-broadcast";
+
+const VALID_EFFECTS = ["explosion", "fake_ban", "matrix", "disco", "upside_down", "earthquake", "ghost"] as const;
 
 const router: IRouter = Router();
 
@@ -76,6 +79,20 @@ router.get("/admin/online-users", requireAdmin, async (req, res): Promise<void> 
       };
     }),
   );
+});
+
+router.post("/admin/troll", requireAdmin, async (req, res): Promise<void> => {
+  const { targetUsername, effect } = req.body ?? {};
+  if (!targetUsername || typeof targetUsername !== "string") {
+    res.status(400).json({ error: "targetUsername required" });
+    return;
+  }
+  if (!effect || !VALID_EFFECTS.includes(effect)) {
+    res.status(400).json({ error: `effect must be one of: ${VALID_EFFECTS.join(", ")}` });
+    return;
+  }
+  broadcast({ type: "troll_effect", payload: { targetUsername, effect } });
+  res.json({ ok: true });
 });
 
 router.post("/filter/check", requireAdmin, async (req, res): Promise<void> => {

@@ -16,7 +16,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
+
+type DurationType = "permanent" | "minutes" | "hours" | "days";
+
+function calcExpiresAt(type: DurationType, amount: number): { isPermanent: boolean; expiresAt?: string } {
+  if (type === "permanent") return { isPermanent: true };
+  const ms = type === "minutes" ? amount * 60_000 : type === "hours" ? amount * 3_600_000 : amount * 86_400_000;
+  return { isPermanent: false, expiresAt: new Date(Date.now() + ms).toISOString() };
+}
+
+function formatDuration(type: DurationType, amount: number) {
+  if (type === "permanent") return "permanently";
+  return `for ${amount} ${type}`;
+}
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
@@ -24,42 +44,88 @@ export default function AdminUsers() {
   const users = data?.users || [];
   const { toast } = useToast();
 
-  const [banDialog, setBanDialog] = useState<{ open: boolean; userId: number | null }>({ open: false, userId: null });
-  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId: number | null }>({ open: false, userId: null });
+  const [banDialog, setBanDialog] = useState<{ open: boolean; userId: number | null; username: string }>({ open: false, userId: null, username: "" });
+  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId: number | null; username: string }>({ open: false, userId: null, username: "" });
   const [reason, setReason] = useState("");
+  const [durationType, setDurationType] = useState<DurationType>("permanent");
+  const [durationAmount, setDurationAmount] = useState(1);
 
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
 
+  const resetDialog = () => {
+    setReason("");
+    setDurationType("permanent");
+    setDurationAmount(1);
+  };
+
   const handleBan = () => {
     if (!banDialog.userId || !reason) return;
+    const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
     banMutation.mutate(
-      { data: { userId: banDialog.userId, reason, isPermanent: true } },
+      { data: { userId: banDialog.userId, reason, isPermanent, expiresAt } },
       {
         onSuccess: () => {
-          toast({ title: "User banned" });
-          setBanDialog({ open: false, userId: null });
-          setReason("");
+          toast({ title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}` });
+          setBanDialog({ open: false, userId: null, username: "" });
+          resetDialog();
           refetch();
-        }
+        },
+        onError: (err) => toast({ variant: "destructive", title: "Error", description: err.message }),
       }
     );
   };
 
   const handleMute = () => {
     if (!muteDialog.userId || !reason) return;
+    const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
     muteMutation.mutate(
-      { data: { userId: muteDialog.userId, reason, isPermanent: true } },
+      { data: { userId: muteDialog.userId, reason, isPermanent, expiresAt } },
       {
         onSuccess: () => {
-          toast({ title: "User muted" });
-          setMuteDialog({ open: false, userId: null });
-          setReason("");
+          toast({ title: `${muteDialog.username} muted ${formatDuration(durationType, durationAmount)}` });
+          setMuteDialog({ open: false, userId: null, username: "" });
+          resetDialog();
           refetch();
-        }
+        },
+        onError: (err) => toast({ variant: "destructive", title: "Error", description: err.message }),
       }
     );
   };
+
+  const DurationPicker = () => (
+    <div className="space-y-3">
+      <Label>Duration</Label>
+      <div className="flex gap-2">
+        <Select value={durationType} onValueChange={(v) => setDurationType(v as DurationType)}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="permanent">Permanent</SelectItem>
+            <SelectItem value="minutes">Minutes</SelectItem>
+            <SelectItem value="hours">Hours</SelectItem>
+            <SelectItem value="days">Days</SelectItem>
+          </SelectContent>
+        </Select>
+        {durationType !== "permanent" && (
+          <Input
+            type="number"
+            min={1}
+            max={durationType === "minutes" ? 1440 : durationType === "hours" ? 744 : 365}
+            value={durationAmount}
+            onChange={(e) => setDurationAmount(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-24"
+          />
+        )}
+      </div>
+      {durationType !== "permanent" && (
+        <p className="text-xs text-muted-foreground">
+          Expires: {new Date(Date.now() + (durationType === "minutes" ? durationAmount * 60_000 : durationType === "hours" ? durationAmount * 3_600_000 : durationAmount * 86_400_000)).toLocaleString()}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <AdminLayout>
@@ -118,7 +184,7 @@ export default function AdminUsers() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setMuteDialog({ open: true, userId: u.id })}
+                        onClick={() => { resetDialog(); setMuteDialog({ open: true, userId: u.id, username: u.username }); }}
                         disabled={u.isOwner || u.isMuted}
                       >
                         <VolumeX className="w-4 h-4 mr-1" /> Mute
@@ -126,7 +192,7 @@ export default function AdminUsers() {
                       <Button 
                         variant="destructive" 
                         size="sm" 
-                        onClick={() => setBanDialog({ open: true, userId: u.id })}
+                        onClick={() => { resetDialog(); setBanDialog({ open: true, userId: u.id, username: u.username }); }}
                         disabled={u.isOwner}
                       >
                         <Ban className="w-4 h-4 mr-1" /> Ban
@@ -146,30 +212,32 @@ export default function AdminUsers() {
           </Table>
         </div>
 
-        {/* Action Dialogs */}
-        <Dialog open={banDialog.open} onOpenChange={(open) => !open && setBanDialog({ open: false, userId: null })}>
+        <Dialog open={banDialog.open} onOpenChange={(open) => { if (!open) { setBanDialog({ open: false, userId: null, username: "" }); resetDialog(); } }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Ban User</DialogTitle>
-              <DialogDescription>This action will immediately disconnect the user and prevent login.</DialogDescription>
+              <DialogTitle>Ban <span className="text-primary">{banDialog.username}</span></DialogTitle>
+              <DialogDescription>This will prevent the user from logging in.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Reason</Label>
                 <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Violation of terms..." />
               </div>
+              <DurationPicker />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setBanDialog({ open: false, userId: null })}>Cancel</Button>
-              <Button variant="destructive" onClick={handleBan} disabled={!reason || banMutation.isPending}>Confirm Ban</Button>
+              <Button variant="outline" onClick={() => { setBanDialog({ open: false, userId: null, username: "" }); resetDialog(); }}>Cancel</Button>
+              <Button variant="destructive" onClick={handleBan} disabled={!reason || banMutation.isPending}>
+                {banMutation.isPending ? "Banning..." : "Confirm Ban"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={muteDialog.open} onOpenChange={(open) => !open && setMuteDialog({ open: false, userId: null })}>
+        <Dialog open={muteDialog.open} onOpenChange={(open) => { if (!open) { setMuteDialog({ open: false, userId: null, username: "" }); resetDialog(); } }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Mute User</DialogTitle>
+              <DialogTitle>Mute <span className="text-primary">{muteDialog.username}</span></DialogTitle>
               <DialogDescription>User will remain connected but cannot send messages.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -177,10 +245,13 @@ export default function AdminUsers() {
                 <Label>Reason</Label>
                 <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Spamming..." />
               </div>
+              <DurationPicker />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setMuteDialog({ open: false, userId: null })}>Cancel</Button>
-              <Button variant="destructive" onClick={handleMute} disabled={!reason || muteMutation.isPending}>Confirm Mute</Button>
+              <Button variant="outline" onClick={() => { setMuteDialog({ open: false, userId: null, username: "" }); resetDialog(); }}>Cancel</Button>
+              <Button variant="destructive" onClick={handleMute} disabled={!reason || muteMutation.isPending}>
+                {muteMutation.isPending ? "Muting..." : "Confirm Mute"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

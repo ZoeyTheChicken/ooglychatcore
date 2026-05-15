@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, messagesTable, usersTable, bansTable, mutesTable, reactionsTable } from "@workspace/db";
-import { eq, desc, lt, and, gt, isNull, or, sql } from "drizzle-orm";
+import { eq, desc, lt, and, gt, isNull, or, sql, inArray } from "drizzle-orm";
 import {
   SendMessageBody,
   DeleteMessageParams,
@@ -51,7 +51,7 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
     users = await db
       .select({ id: usersTable.id, username: usersTable.username })
       .from(usersTable)
-      .where(sql`${usersTable.id} = ANY(${authorIds})`);
+      .where(inArray(usersTable.id, authorIds));
   }
   const userMap = new Map(users.map((u) => [u.id, u.username]));
 
@@ -61,7 +61,7 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
     allReactions = await db
       .select()
       .from(reactionsTable)
-      .where(sql`${reactionsTable.messageId} = ANY(${msgIds})`);
+      .where(inArray(reactionsTable.messageId, msgIds));
   }
 
   const currentUserId = req.currentUser!.id;

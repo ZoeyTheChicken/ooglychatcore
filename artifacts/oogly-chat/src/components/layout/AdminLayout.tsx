@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { 
   BarChart, Users, Ban, VolumeX, Mail, Megaphone, 
-  FileText, MessageSquare, ArrowLeft, LogOut
+  FileText, MessageSquare, ArrowLeft, LogOut, Zap
 } from "lucide-react";
 import { useListAppeals } from "@workspace/api-client-react";
 
@@ -31,6 +31,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     },
     { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
     { href: "/admin/logs", label: "Audit Logs", icon: FileText },
+    { href: "/admin/troll", label: "Troll Panel", icon: Zap },
   ];
 
   return (
