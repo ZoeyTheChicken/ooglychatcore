@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useEffect } from "react";
+
 
 type DurationType = "permanent" | "minutes" | "hours" | "days";
 
@@ -40,7 +42,9 @@ function formatDuration(type: DurationType, amount: number) {
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
-  const { data, refetch } = useListUsers({ search, page: 1 });
+  
+  const [page, setPage] = useState(1);
+  const { data, refetch } = useListUsers({ search, page });
   const users = data?.users || [];
   const { toast } = useToast();
 
@@ -49,6 +53,11 @@ export default function AdminUsers() {
   const [reason, setReason] = useState("");
   const [durationType, setDurationType] = useState<DurationType>("permanent");
   const [durationAmount, setDurationAmount] = useState(1);
+  const totalPages = data?.totalPages || 1;
+
+  useEffect(() => {
+  setPage(1);
+}, [search]);
 
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
@@ -210,6 +219,27 @@ export default function AdminUsers() {
               )}
             </TableBody>
           </Table>
+          <div className="flex items-center justify-between mt-4">
+  <Button
+    variant="outline"
+    disabled={page <= 1}
+    onClick={() => setPage((p) => p - 1)}
+  >
+    Previous
+  </Button>
+
+  <span className="text-sm text-muted-foreground">
+    Page {page} of {totalPages}
+  </span>
+
+  <Button
+    variant="outline"
+    disabled={page >= totalPages}
+    onClick={() => setPage((p) => p + 1)}
+  >
+    Next
+  </Button>
+</div>
         </div>
 
         <Dialog open={banDialog.open} onOpenChange={(open) => { if (!open) { setBanDialog({ open: false, userId: null, username: "" }); resetDialog(); } }}>
