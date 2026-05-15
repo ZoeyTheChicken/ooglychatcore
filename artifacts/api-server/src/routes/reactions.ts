@@ -3,6 +3,7 @@ import { db, reactionsTable, messagesTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { AddReactionParams, AddReactionBody, RemoveReactionParams, GetReactionSummaryParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { broadcast } from "../lib/ws-broadcast";
 
 const router: IRouter = Router();
 
@@ -24,14 +25,12 @@ router.post("/messages/:id/reactions", requireAuth, async (req, res): Promise<vo
   const { id: messageId } = params.data;
   const { emoji } = body.data;
 
-  // Check message exists
   const [msg] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId));
   if (!msg) {
     res.status(404).json({ error: "Message not found" });
     return;
   }
 
-  // Upsert: delete existing same reaction from same user, then insert
   await db
     .delete(reactionsTable)
     .where(
@@ -46,6 +45,8 @@ router.post("/messages/:id/reactions", requireAuth, async (req, res): Promise<vo
     .insert(reactionsTable)
     .values({ messageId, userId: user.id, emoji })
     .returning();
+
+  broadcast({ type: "reaction_update", payload: { messageId } });
 
   res.status(201).json({
     id: reaction.id,
@@ -66,16 +67,19 @@ router.delete("/messages/:id/reactions/:emoji", requireAuth, async (req, res): P
   }
 
   const user = req.currentUser!;
+  const { id: messageId } = params.data;
+
   await db
     .delete(reactionsTable)
     .where(
       and(
-        eq(reactionsTable.messageId, params.data.id),
+        eq(reactionsTable.messageId, messageId),
         eq(reactionsTable.userId, user.id),
         eq(reactionsTable.emoji, params.data.emoji),
       ),
     );
 
+  broadcast({ type: "reaction_update", payload: { messageId } });
   res.sendStatus(204);
 });
 

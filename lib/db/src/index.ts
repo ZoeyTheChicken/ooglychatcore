@@ -7,9 +7,11 @@ const { Pool } = pg;
 // Oogly Chat uses an external Neon.tech PostgreSQL database.
 // Set DATABASE_URL to your Neon connection string, e.g.:
 // postgresql://user:password@ep-xxxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
-const DATABASE_URL =
-  process.env.DATABASE_URL ??
-  "postgresql://PLACEHOLDER:PLACEHOLDER@ep-PLACEHOLDER.us-east-2.aws.neon.tech/neondb?sslmode=require";
+const DATABASE_URL = process.env.DB_SECRET;
+
+if (!DATABASE_URL) {
+  throw new Error("Missing DB_SECRET environment variable");
+}
 
 export const pool = new Pool({
   connectionString: DATABASE_URL,

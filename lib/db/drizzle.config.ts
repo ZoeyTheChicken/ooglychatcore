@@ -1,14 +1,17 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+const dbUrl = process.env.DB_SECRET || process.env.DATABASE_URL;
+
+if (!dbUrl) {
+  throw new Error("Missing DB_SECRET (or DATABASE_URL) environment variable");
 }
 
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: dbUrl,
+    ssl: true,
   },
 });

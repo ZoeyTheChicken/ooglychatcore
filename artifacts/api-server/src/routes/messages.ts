@@ -9,6 +9,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { checkFilter } from "../lib/swear-filter";
 import { logModerationAction } from "./moderation-logs";
+import { broadcast } from "../lib/ws-broadcast";
 
 const router: IRouter = Router();
 
@@ -44,7 +45,6 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
     .orderBy(desc(messagesTable.id))
     .limit(Math.min(limit, 100));
 
-  // Get author usernames
   const authorIds = [...new Set(msgs.map((m) => m.authorId))];
   let users: Array<{ id: number; username: string }> = [];
   if (authorIds.length > 0) {
@@ -55,7 +55,6 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
   }
   const userMap = new Map(users.map((u) => [u.id, u.username]));
 
-  // Get reactions summary for all messages
   const msgIds = msgs.map((m) => m.id);
   let allReactions: any[] = [];
   if (msgIds.length > 0) {
@@ -92,7 +91,6 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
 router.post("/messages", requireAuth, async (req, res): Promise<void> => {
   const user = req.currentUser!;
 
-  // Check for active ban
   const now = new Date();
   const activeBan = await db
     .select()
@@ -113,7 +111,6 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Check for active mute
   const activeMute = await db
     .select()
     .from(mutesTable)
@@ -141,7 +138,6 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
 
   const { content, replyToId } = parsed.data;
 
-  // Swear filter
   const filterResult = checkFilter(content);
   if (filterResult.flagged) {
     res.status(400).json({
@@ -182,7 +178,9 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.status(201).json(serializeMessage(msg, user.username, []));
+  const serialized = serializeMessage(msg, user.username, []);
+  broadcast({ type: "new_message", payload: serialized });
+  res.status(201).json(serialized);
 });
 
 router.delete("/messages/:id", requireAuth, async (req, res): Promise<void> => {
@@ -204,7 +202,6 @@ router.delete("/messages/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Must be admin/owner or the message author
   if (msg.authorId !== user.id && !user.isAdmin && !user.isOwner) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -225,6 +222,7 @@ router.delete("/messages/:id", requireAuth, async (req, res): Promise<void> => {
     });
   }
 
+  broadcast({ type: "delete_message", payload: { id: parsed.data.id } });
   res.sendStatus(204);
 });
 
