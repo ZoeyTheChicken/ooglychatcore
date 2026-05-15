@@ -33,6 +33,7 @@ const RAW_BANNED = [
   "faggg",
   "f@g",
   "f@ggot",
+  "gay", "g@y", "gayy", "lesbian"
 ];
 
 // Normalize a string: lowercase, remove zero-width chars, common leetspeak
