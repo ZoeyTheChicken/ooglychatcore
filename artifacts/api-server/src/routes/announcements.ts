@@ -75,7 +75,7 @@ router.delete("/announcements/:id", requireAdmin, async (req, res): Promise<void
     .returning();
 
   if (!deleted) {
-    res.status(404).json({ error: "Announcement not found" });
+    res.status(404).json({ error: "Announcement was not found" });
     return;
   }
 

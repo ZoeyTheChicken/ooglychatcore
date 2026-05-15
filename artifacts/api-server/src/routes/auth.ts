@@ -23,7 +23,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   // Username filter check
   if (checkUsernameFilter(username)) {
-    res.status(400).json({ error: "Username contains prohibited words." });
+    res.status(400).json({ error: "Username is not appropriate for Oogly Chat." });
     return;
   }
 
@@ -41,7 +41,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .where(eq(usersTable.username, username));
 
   if (existing.length > 0) {
-    res.status(400).json({ error: "Username already taken." });
+    res.status(400).json({ error: "Username has already been claimed." });
     return;
   }
 
@@ -87,13 +87,13 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     .where(eq(usersTable.username, username));
 
   if (!user) {
-    res.status(401).json({ error: "Invalid username or password." });
+    res.status(401).json({ error: "Your username or password was incorrect." });
     return;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: "Invalid username or password." });
+    res.status(401).json({ error: "Your username or password was incorrect." });
     return;
   }
 

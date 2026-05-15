@@ -13,7 +13,7 @@ const RAW_BANNED = [
   "bastard", "b4stard",
   "bitch", "b1tch", "bi+ch", "bytch",
   "cunt", "c.unt", "kunt",
-  "dick", "d1ck", "dik",
+  "dick", "d1ck", "dik", "dih", "bih",
   "cock", "c0ck",
   "pussy", "puss1",
   "whore", "wh0re",
@@ -24,9 +24,15 @@ const RAW_BANNED = [
   "retard", "ret4rd",
   "rape", "r@pe",
   "pedophile", "pedo",
-  "nazi",
-  // Platform-specific banned terms
+  "nazi", "n@2i",
   "clanker", "clank", "clanka",
+  "niggers", "niggas",
+  "vagina", "vag!na", "sperm", "penis", "cum", "cumrag",
+  "fagg",
+  "faggots",
+  "faggg",
+  "f@g",
+  "f@ggot",
 ];
 
 // Normalize a string: lowercase, remove zero-width chars, common leetspeak
