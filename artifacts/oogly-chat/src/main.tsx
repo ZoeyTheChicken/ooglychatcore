@@ -4,7 +4,7 @@ if (typeof window !== "undefined") {
 
   window.WebSocket = function (url, protocols) {
     // If the incoming URL is empty or corrupted, catch it before it can crash the tab
-    let finalUrl = "wss://://zoeyaviation.com";
+    let finalUrl = "wss://zoeyaviation.com";
 
     if (typeof url === "string" && url.trim().length > 0) {
       // If it looks like a valid target domain, clean out any double-protocol symbols
