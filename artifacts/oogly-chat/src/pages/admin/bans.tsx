@@ -11,9 +11,9 @@ export default function AdminBans() {
   const unbanMutation = useUnbanUser();
   const { toast } = useToast();
 
-  const handleUnban = (userId: number) => {
+  const handleUnban = (banId: number) => {
     unbanMutation.mutate(
-      { data: { userId, reason: "Manual unban by admin" } },
+      { id: banId },
       {
         onSuccess: () => {
           toast({ title: "User unbanned successfully" });
@@ -56,7 +56,7 @@ export default function AdminBans() {
                       variant="outline" 
                       size="sm"
                       className="border-green-500/30 text-green-500 hover:bg-green-500/10"
-                      onClick={() => handleUnban(ban.userId)}
+                      onClick={() => handleUnban(ban.id)}
                       disabled={unbanMutation.isPending}
                     >
                       <ShieldCheck className="w-4 h-4 mr-1" /> Unban

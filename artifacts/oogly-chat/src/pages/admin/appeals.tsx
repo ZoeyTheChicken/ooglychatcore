@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useListMutes } from "@workspace/api-client-react";
 import { MailOpen, Trash2, Volume2 } from "lucide-react";
 
 export default function AdminAppeals() {
   const { data: appeals = [], refetch } = useListAppeals({ unread: true });
+  const { data: mutes = [] } = useListMutes({ active: true });
   const markRead = useMarkAppealRead();
   const dismiss = useDismissAppeal();
   const unmute = useUnmuteUser();
@@ -31,12 +33,29 @@ export default function AdminAppeals() {
   };
 
   const handleUnmute = (userId: number, appealId: number) => {
+    const mute = mutes.find((m: any) => m.userId === userId);
+
+    if (!mute) {
+      toast({
+        title: "Mute not found",
+        description: "Could not find active mute for this user.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     unmute.mutate(
-      { data: { userId, reason: "Appeal accepted" } },
+      { id: mute.id },
       {
         onSuccess: () => {
-          dismiss.mutate({ id: appealId }, { onSuccess: () => refetch() });
-          toast({ title: "User unmuted and appeal closed" });
+          dismiss.mutate(
+            { id: appealId },
+            { onSuccess: () => refetch() }
+          );
+
+          toast({
+            title: "User unmuted and appeal closed"
+          });
         }
       }
     );

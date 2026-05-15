@@ -11,15 +11,9 @@ export default function AdminMutes() {
   const unmuteMutation = useUnmuteUser();
   const { toast } = useToast();
 
-  const handleUnmute = (userId: number) => {
+  const handleUnmute = (muteId: number) => {
     unmuteMutation.mutate(
-      { data: { userId, reason: "Manual unmute by admin" } },
-      {
-        onSuccess: () => {
-          toast({ title: "User unmuted successfully" });
-          refetch();
-        }
-      }
+      { id: muteId },
     );
   };
 
@@ -56,7 +50,7 @@ export default function AdminMutes() {
                       variant="outline" 
                       size="sm"
                       className="border-green-500/30 text-green-500 hover:bg-green-500/10"
-                      onClick={() => handleUnmute(mute.userId)}
+                      onClick={() => handleUnmute(mute.id)}
                       disabled={unmuteMutation.isPending}
                     >
                       <Volume2 className="w-4 h-4 mr-1" /> Unmute
