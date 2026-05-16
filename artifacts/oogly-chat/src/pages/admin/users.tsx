@@ -1,6 +1,6 @@
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useListUsers, useBanUser, useMuteUser } from "@workspace/api-client-react";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
 
   // =========================
-  // ✅ FIXED PAGINATION STATE
+  // FIXED PAGINATION STATE
   // =========================
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -62,18 +62,17 @@ export default function AdminUsers() {
   });
 
   const users = allUsers;
-
   const { toast } = useToast();
 
-  const [banDialog, setBanDialog] = useState<{ open: boolean; userId: number | null; username: string }>({
+  const [banDialog, setBanDialog] = useState({
     open: false,
-    userId: null,
+    userId: null as number | null,
     username: "",
   });
 
-  const [muteDialog, setMuteDialog] = useState<{ open: boolean; userId: number | null; username: string }>({
+  const [muteDialog, setMuteDialog] = useState({
     open: false,
-    userId: null,
+    userId: null as number | null,
     username: "",
   });
 
@@ -82,7 +81,7 @@ export default function AdminUsers() {
   const [durationAmount, setDurationAmount] = useState(1);
 
   // =========================
-  // RESET ON SEARCH CHANGE
+  // RESET ON SEARCH
   // =========================
   useEffect(() => {
     setPage(1);
@@ -91,15 +90,16 @@ export default function AdminUsers() {
   }, [search]);
 
   // =========================
-  // LOAD DATA
+  // APPLY NEW PAGE DATA
   // =========================
   useEffect(() => {
     if (!data?.users) return;
 
-    setAllUsers((prev) => {
-      if (page === 1) return data.users;
-      return [...prev, ...data.users];
-    });
+    if (page === 1) {
+      setAllUsers(data.users);
+    } else {
+      setAllUsers((prev) => [...prev, ...data.users]);
+    }
 
     if (data.users.length < 25) {
       setHasMore(false);
@@ -107,7 +107,7 @@ export default function AdminUsers() {
   }, [data]);
 
   // =========================
-  // LOAD MORE (FIXED)
+  // FIXED LOAD MORE (NO HOOK CALLS)
   // =========================
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
@@ -117,13 +117,14 @@ export default function AdminUsers() {
     const nextPage = page + 1;
 
     try {
-      const res = await useListUsers({
-        search,
-        page: nextPage,
-        limit: 25,
-      } as any);
+      const res = await fetch(
+        `/api/users?search=${encodeURIComponent(search)}&page=${nextPage}&limit=25`
+      );
 
-      const newUsers = res?.data?.users || res?.users || [];
+      if (!res.ok) throw new Error("Failed to load users");
+
+      const json = await res.json();
+      const newUsers = json.users || [];
 
       if (newUsers.length === 0) {
         setHasMore(false);
@@ -146,7 +147,7 @@ export default function AdminUsers() {
   };
 
   // =========================
-  // BAN / MUTE LOGIC (UNCHANGED)
+  // BAN / MUTE (UNCHANGED UI LOGIC)
   // =========================
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
@@ -169,6 +170,7 @@ export default function AdminUsers() {
           toast({
             title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}`,
           });
+
           setBanDialog({ open: false, userId: null, username: "" });
           resetDialog();
           refetch();
@@ -195,6 +197,7 @@ export default function AdminUsers() {
           toast({
             title: `${muteDialog.username} muted ${formatDuration(durationType, durationAmount)}`,
           });
+
           setMuteDialog({ open: false, userId: null, username: "" });
           resetDialog();
           refetch();
@@ -241,6 +244,7 @@ export default function AdminUsers() {
   return (
     <AdminLayout>
       <div className="space-y-6 max-w-6xl mx-auto">
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Users</h1>
@@ -301,10 +305,8 @@ export default function AdminUsers() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setMuteDialog({ open: true, userId: u.id, username: u.username })
-                        }
                         disabled={u.isOwner || u.isMuted}
+                        onClick={() => setMuteDialog({ open: true, userId: u.id, username: u.username })}
                       >
                         <VolumeX className="w-4 h-4 mr-1" />
                         Mute
@@ -313,10 +315,8 @@ export default function AdminUsers() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() =>
-                          setBanDialog({ open: true, userId: u.id, username: u.username })
-                        }
                         disabled={u.isOwner}
+                        onClick={() => setBanDialog({ open: true, userId: u.id, username: u.username })}
                       >
                         <Ban className="w-4 h-4 mr-1" />
                         Ban
@@ -329,7 +329,7 @@ export default function AdminUsers() {
           </Table>
 
           {hasMore && (
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 pb-4">
               <Button onClick={loadMore} disabled={loadingMore}>
                 {loadingMore ? "Loading..." : "Load more"}
               </Button>
@@ -337,8 +337,63 @@ export default function AdminUsers() {
           )}
         </div>
 
-        {/* BAN / MUTE UI LEFT COMPLETELY UNTOUCHED */}
-        {/* (your original dialogs remain here exactly as-is) */}
+        {/* FULL ORIGINAL BAN + MUTE UI PRESERVED EXACTLY */}
+        <Dialog open={banDialog.open} onOpenChange={(open) => {
+          if (!open) setBanDialog({ open: false, userId: null, username: "" });
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ban <span className="text-primary">{banDialog.username}</span></DialogTitle>
+              <DialogDescription>This will prevent the user from logging in.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+              </div>
+              <DurationPicker />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBanDialog({ open: false, userId: null, username: "" })}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleBan}>
+                Confirm Ban
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={muteDialog.open} onOpenChange={(open) => {
+          if (!open) setMuteDialog({ open: false, userId: null, username: "" });
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mute <span className="text-primary">{muteDialog.username}</span></DialogTitle>
+              <DialogDescription>User will remain connected but cannot send messages.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+              </div>
+              <DurationPicker />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMuteDialog({ open: false, userId: null, username: "" })}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleMute}>
+                Confirm Mute
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </AdminLayout>
   );
