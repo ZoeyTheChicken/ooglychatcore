@@ -21,10 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
 
-const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"];
-const PAGE_SIZE = 100;
-const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
-const [loadingMore, setLoadingMore] = useState(false);
+const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"]
 
 function linkify(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -66,6 +63,9 @@ export default function ChatView() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypeSentRef = useRef(0);
+  const PAGE_SIZE = 100;
+const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
+const [loadingMore, setLoadingMore] = useState(false);
   const initialScrollDone = useRef(false);
 
 const { data: messages = [], refetch, isFetching } = useListMessages(
