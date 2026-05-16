@@ -21,8 +21,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
 
-const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉"];
-const MSG_QUERY_PARAMS = { limit: 50 };
+const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"];
+const PAGE_SIZE = 100;
+const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
+const [loadingMore, setLoadingMore] = useState(false);
 
 function linkify(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -66,9 +68,15 @@ export default function ChatView() {
   const lastTypeSentRef = useRef(0);
   const initialScrollDone = useRef(false);
 
-  const { data: messages = [], refetch } = useListMessages(MSG_QUERY_PARAMS, {
-    query: { refetchInterval: false }
-  });
+const { data: messages = [], refetch, isFetching } = useListMessages(
+  { limit: messageLimit },
+  {
+    query: {
+      refetchInterval: false,
+      keepPreviousData: true,
+    },
+  }
+);
 
   const { data: announcements = [] } = useListAnnouncements();
   const latestAnnouncement = announcements[0];
@@ -88,6 +96,29 @@ export default function ChatView() {
     const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
     if (force || isAtBottom) el.scrollTop = el.scrollHeight;
   }, []);
+
+  const loadMoreMessages = async () => {
+  if (loadingMore) return;
+
+  const scrollEl = scrollRef.current;
+  const oldHeight = scrollEl?.scrollHeight ?? 0;
+
+  setLoadingMore(true);
+
+  const nextLimit = messageLimit + PAGE_SIZE;
+
+  setMessageLimit(nextLimit);
+
+  // wait for render
+  setTimeout(() => {
+    if (scrollEl) {
+      const newHeight = scrollEl.scrollHeight;
+      scrollEl.scrollTop += newHeight - oldHeight;
+    }
+
+    setLoadingMore(false);
+  }, 100);
+};
 
   // Force scroll on first message load
   useEffect(() => {
@@ -207,6 +238,16 @@ export default function ChatView() {
       )}
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
+        <div className="max-w-4xl mx-auto mb-4 flex justify-center">
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={loadMoreMessages}
+    disabled={loadingMore || isFetching}
+  >
+    {loadingMore ? "Loading older messages..." : "Load older messages"}
+  </Button>
+</div>
         <div className={`max-w-4xl mx-auto flex flex-col justify-end min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
           {[...messages].reverse().map((msg) => {
             const isOwn = msg.authorId === user?.id;
