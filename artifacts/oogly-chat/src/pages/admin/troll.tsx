@@ -59,7 +59,7 @@ export default function AdminTroll() {
     setPending(effectId);
     try {
       const token = localStorage.getItem("oogly_token");
-      const base = (import.meta.env.BASE_URL ?? "").replace(/\/$/, "");
+      const API_BASE = "https://chatapi.zoeyaviation.com"
       const res = await fetch(`${base}/api/admin/troll`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
