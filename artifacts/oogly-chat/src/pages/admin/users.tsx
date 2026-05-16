@@ -231,12 +231,6 @@ useEffect(() => {
               )}
             </TableBody>
           </Table>
-          {hasMore && (
-  <div className="flex justify-center mt-4">
-    <Button onClick={loadMore} disabled={loadingMore}>
-      {loadingMore ? "Loading..." : "Load more"}
-    </Button>
-  </div>
 )}
         </div>
 
