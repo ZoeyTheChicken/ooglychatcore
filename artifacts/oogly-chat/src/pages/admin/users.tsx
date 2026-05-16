@@ -42,12 +42,9 @@ function formatDuration(type: DurationType, amount: number) {
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
-  
-  const [page, setPage] = useState(1);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const { data } = useListUsers({ search, page: 1, limit: 1000 });
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const { data, refetch } = useListUsers({ search, page: 1 });
   const users = data?.users || [];
   const { toast } = useToast();
 
@@ -192,9 +189,9 @@ const loadMore = async () => {
           </div>
         </div>
 
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border bg-card max-h-[70vh] overflow-y-auto">
           <Table>
-            <TableHeader>
+           <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Username</TableHead>
