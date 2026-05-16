@@ -202,7 +202,7 @@ const loadMore = async () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allUsers.map((u) => (
+              {users.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">#{u.id}</TableCell>
                   <TableCell className="font-medium">{u.username}</TableCell>
