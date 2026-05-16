@@ -56,7 +56,6 @@ export default function AdminUsers() {
   const totalPages = data?.totalPages || 1;
 
 useEffect(() => {
-  setPage(1);
   setAllUsers([]);
   setHasMore(true);
 }, [search]);
@@ -71,26 +70,6 @@ useEffect(() => {
   }
 }, [data]);
 
-const loadMore = async () => {
-  if (loadingMore || !hasMore) return;
-
-  setLoadingMore(true);
-
-  const nextPage = page + 1;
-
-  const res = await useListUsers({ search, page: nextPage });
-
-  const newUsers = res?.users || [];
-
-  setAllUsers((prev) => [...prev, ...newUsers]);
-  setPage(nextPage);
-
-  if (newUsers.length < 25) {
-    setHasMore(false);
-  }
-
-  setLoadingMore(false);
-};
 
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
