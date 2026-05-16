@@ -31,7 +31,6 @@ function serializeMessage(msg: any, authorUsername: string, reactions: any[] = [
 router.get("/messages", requireAuth, async (req, res): Promise<void> => {
   const queryResult = ListMessagesQueryParams.safeParse(req.query);
   const before = queryResult.success ? queryResult.data.before : undefined;
-  const limit = queryResult.success ? (queryResult.data.limit ?? 50) : 50;
 
   const conditions = [];
   if (before) {
@@ -43,7 +42,6 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
     .from(messagesTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(messagesTable.id))
-    .limit(Math.min(limit, 100));
 
   const authorIds = [...new Set(msgs.map((m) => m.authorId))];
   let users: Array<{ id: number; username: string }> = [];
