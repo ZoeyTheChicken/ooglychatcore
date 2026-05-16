@@ -22,7 +22,8 @@ import { format } from "date-fns";
 type DurationType = "permanent" | "minutes" | "hours" | "days";
 
 function calcExpiresAt(type: DurationType, amount: number) {
-  if (type === "permanent") return { isPermanent: true };
+  if (type === "permanent") return { isPermanent: true as const };
+
   const ms =
     type === "minutes"
       ? amount * 60_000
@@ -30,7 +31,10 @@ function calcExpiresAt(type: DurationType, amount: number) {
       ? amount * 3_600_000
       : amount * 86_400_000;
 
-  return { isPermanent: false, expiresAt: new Date(Date.now() + ms).toISOString() };
+  return {
+    isPermanent: false as const,
+    expiresAt: new Date(Date.now() + ms).toISOString(),
+  };
 }
 
 function formatDuration(type: DurationType, amount: number) {
@@ -40,18 +44,27 @@ function formatDuration(type: DurationType, amount: number) {
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
-  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const { data, refetch } = useListUsers({ search, page });
-  const users = data?.users || [];
+  const users = data?.users ?? [];
 
   const { toast } = useToast();
 
-  const [banDialog, setBanDialog] = useState({ open: false, userId: null as number | null, username: "" });
-  const [muteDialog, setMuteDialog] = useState({ open: false, userId: null as number | null, username: "" });
+  const [banDialog, setBanDialog] = useState({
+    open: false,
+    userId: null as number | null,
+    username: "",
+  });
+
+  const [muteDialog, setMuteDialog] = useState({
+    open: false,
+    userId: null as number | null,
+    username: "",
+  });
 
   const [reason, setReason] = useState("");
   const [durationType, setDurationType] = useState<DurationType>("permanent");
@@ -66,18 +79,18 @@ export default function AdminUsers() {
     setDurationAmount(1);
   };
 
-  // reset when search changes
+  // RESET ON SEARCH
   useEffect(() => {
     setAllUsers([]);
     setPage(1);
     setHasMore(true);
   }, [search]);
 
-  // auto-pagination loop
+  // AUTO-PAGINATION (safe version)
   useEffect(() => {
     if (!data?.users) return;
 
-    setAllUsers(prev => {
+    setAllUsers((prev) => {
       const merged = [...prev, ...data.users];
       return merged;
     });
@@ -87,45 +100,78 @@ export default function AdminUsers() {
       return;
     }
 
-    // fetch next page automatically
     if (hasMore && !loading) {
       setLoading(true);
-      setPage(p => p + 1);
-      setLoading(false);
+      setTimeout(() => {
+        setPage((p) => p + 1);
+        setLoading(false);
+      }, 50);
     }
   }, [data]);
 
   const handleBan = () => {
-    if (!banDialog.userId || !reason) return;
+    if (banDialog.userId == null || reason.trim() === "") return;
 
     const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
 
     banMutation.mutate(
-      { data: { userId: banDialog.userId, reason, isPermanent, expiresAt } },
+      {
+        userId: banDialog.userId,
+        reason,
+        isPermanent,
+        expiresAt,
+      },
       {
         onSuccess: () => {
-          toast({ title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}` });
+          toast({
+            title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}`,
+          });
+
           setBanDialog({ open: false, userId: null, username: "" });
           resetDialog();
           refetch();
+        },
+        onError: (err: any) => {
+          console.error(err);
+          toast({
+            variant: "destructive",
+            title: "Ban failed",
+            description: err?.message ?? "Unknown error",
+          });
         },
       }
     );
   };
 
   const handleMute = () => {
-    if (!muteDialog.userId || !reason) return;
+    if (muteDialog.userId == null || reason.trim() === "") return;
 
     const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
 
     muteMutation.mutate(
-      { data: { userId: muteDialog.userId, reason, isPermanent, expiresAt } },
+      {
+        userId: muteDialog.userId,
+        reason,
+        isPermanent,
+        expiresAt,
+      },
       {
         onSuccess: () => {
-          toast({ title: `${muteDialog.username} muted ${formatDuration(durationType, durationAmount)}` });
+          toast({
+            title: `${muteDialog.username} muted ${formatDuration(durationType, durationAmount)}`,
+          });
+
           setMuteDialog({ open: false, userId: null, username: "" });
           resetDialog();
           refetch();
+        },
+        onError: (err: any) => {
+          console.error(err);
+          toast({
+            variant: "destructive",
+            title: "Mute failed",
+            description: err?.message ?? "Unknown error",
+          });
         },
       }
     );
@@ -136,10 +182,10 @@ export default function AdminUsers() {
       <div className="space-y-6 max-w-6xl mx-auto">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Users</h1>
-            <p className="text-muted-foreground">Manage platform members.</p>
+            <p className="text-muted-foreground">Manage platform members</p>
           </div>
 
           <Input
@@ -151,7 +197,7 @@ export default function AdminUsers() {
         </div>
 
         {/* TABLE */}
-        <div className="border rounded-md bg-card overflow-y-auto max-h-[600px]">
+        <div className="border rounded-md bg-card max-h-[600px] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -168,7 +214,10 @@ export default function AdminUsers() {
               {allUsers.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell>#{u.id}</TableCell>
-                  <TableCell className="font-medium">{u.username}</TableCell>
+
+                  <TableCell className="font-medium">
+                    {u.username}
+                  </TableCell>
 
                   <TableCell>
                     {u.isOwner ? (
@@ -176,7 +225,7 @@ export default function AdminUsers() {
                     ) : u.isAdmin ? (
                       <Badge variant="secondary">Admin</Badge>
                     ) : (
-                      <span>User</span>
+                      "User"
                     )}
                   </TableCell>
 
@@ -192,7 +241,10 @@ export default function AdminUsers() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setMuteDialog({ open: true, userId: u.id, username: u.username })}
+                      disabled={!!u.isOwner}
+                      onClick={() =>
+                        setMuteDialog({ open: true, userId: u.id, username: u.username })
+                      }
                     >
                       <VolumeX className="w-4 h-4" />
                     </Button>
@@ -200,7 +252,10 @@ export default function AdminUsers() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => setBanDialog({ open: true, userId: u.id, username: u.username })}
+                      disabled={!!u.isOwner}
+                      onClick={() =>
+                        setBanDialog({ open: true, userId: u.id, username: u.username })
+                      }
                     >
                       <Ban className="w-4 h-4" />
                     </Button>
@@ -211,7 +266,48 @@ export default function AdminUsers() {
           </Table>
         </div>
 
-        {/* dialogs unchanged (you already had them fine) */}
+        {/* BAN DIALOG */}
+        <Dialog open={banDialog.open} onOpenChange={(o) => !o && setBanDialog({ open: false, userId: null, username: "" })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ban {banDialog.username}</DialogTitle>
+            </DialogHeader>
+
+            <Label>Reason</Label>
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBanDialog({ open: false, userId: null, username: "" })}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleBan}>
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* MUTE DIALOG */}
+        <Dialog open={muteDialog.open} onOpenChange={(o) => !o && setMuteDialog({ open: false, userId: null, username: "" })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mute {muteDialog.username}</DialogTitle>
+            </DialogHeader>
+
+            <Label>Reason</Label>
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMuteDialog({ open: false, userId: null, username: "" })}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleMute}>
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </AdminLayout>
   );
