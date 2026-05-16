@@ -189,9 +189,9 @@ const loadMore = async () => {
           </div>
         </div>
 
-        <div className="rounded-md border bg-card max-h-[70vh] overflow-y-auto">
+        <div className="rounded-md border bg-card">
           <Table>
-           <TableHeader className="sticky top-0 bg-background z-10">
+            <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Username</TableHead>
