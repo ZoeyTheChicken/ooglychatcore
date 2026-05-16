@@ -398,7 +398,7 @@ export default function AdminUsers() {
 
               ))}
 
-              {users.length === 0 && !loadingUsers && (
+              {users.length === 0 && !users && (
 
                 <TableRow>
 
