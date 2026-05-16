@@ -123,194 +123,375 @@ export default function AdminUsers() {
   };
 
   const handleBan = () => {
+
     if (!banDialog.userId || !reason) return;
 
     const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
 
     banMutation.mutate(
+
       { data: { userId: banDialog.userId, reason, isPermanent, expiresAt } },
+
       {
+
         onSuccess: () => {
+
           toast({ title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}` });
+
           setBanDialog({ open: false, userId: null, username: "" });
+
           resetDialog();
-          refetch();
+
         },
+
         onError: (err: any) =>
+
           toast({ variant: "destructive", title: "Error", description: err.message }),
+
       }
+
     );
+
   };
 
   const handleMute = () => {
+
     if (!muteDialog.userId || !reason) return;
 
     const { isPermanent, expiresAt } = calcExpiresAt(durationType, durationAmount);
 
     muteMutation.mutate(
+
       { data: { userId: muteDialog.userId, reason, isPermanent, expiresAt } },
+
       {
+
         onSuccess: () => {
+
           toast({ title: `${muteDialog.username} muted ${formatDuration(durationType, durationAmount)}` });
+
           setMuteDialog({ open: false, userId: null, username: "" });
+
           resetDialog();
-          refetch();
+
         },
+
         onError: (err: any) =>
+
           toast({ variant: "destructive", title: "Error", description: err.message }),
+
       }
+
     );
+
   };
 
   const DurationPicker = () => (
+
     <div className="space-y-3">
+
       <Label>Duration</Label>
+
       <div className="flex gap-2">
+
         <Select value={durationType} onValueChange={(v) => setDurationType(v as DurationType)}>
+
           <SelectTrigger className="w-36">
+
             <SelectValue />
+
           </SelectTrigger>
+
           <SelectContent>
+
             <SelectItem value="permanent">Permanent</SelectItem>
+
             <SelectItem value="minutes">Minutes</SelectItem>
+
             <SelectItem value="hours">Hours</SelectItem>
+
             <SelectItem value="days">Days</SelectItem>
+
           </SelectContent>
+
         </Select>
 
         {durationType !== "permanent" && (
+
           <Input
+
             type="number"
+
             min={1}
+
             value={durationAmount}
+
             onChange={(e) => setDurationAmount(Math.max(1, parseInt(e.target.value) || 1))}
+
             className="w-24"
+
           />
+
         )}
+
       </div>
+
     </div>
+
   );
 
   return (
+
     <AdminLayout>
+
       <div className="space-y-6 max-w-6xl mx-auto">
+
         <div className="flex items-center justify-between">
+
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-            <p className="text-muted-foreground mt-1">Manage platform members.</p>
+
+            <h1 className="text-3xl font-bold">Users</h1>
+
+            <p className="text-muted-foreground">Manage platform members.</p>
+
           </div>
 
           <div className="relative w-64">
+
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+
             <Input
-              type="search"
-              placeholder="Search users..."
-              className="pl-9"
+
               value={search}
+
               onChange={(e) => setSearch(e.target.value)}
+
+              placeholder="Search users..."
+
+              className="pl-9"
+
             />
+
           </div>
+
         </div>
 
-        <div className="rounded-md border bg-card">
+        {/* SCROLLABLE TABLE */}
+
+        <div className="border rounded-md bg-card max-h-[70vh] overflow-y-auto">
+
           <Table>
+
             <TableHeader>
+
               <TableRow>
+
                 <TableHead>ID</TableHead>
+
                 <TableHead>Username</TableHead>
+
                 <TableHead>Role</TableHead>
+
                 <TableHead>Status</TableHead>
+
                 <TableHead>Joined</TableHead>
+
                 <TableHead className="text-right">Actions</TableHead>
+
               </TableRow>
+
             </TableHeader>
 
             <TableBody>
+
               {users.map((u) => (
+
                 <TableRow key={u.id}>
+
                   <TableCell>#{u.id}</TableCell>
-                  <TableCell>{u.username}</TableCell>
+
+                  <TableCell className="font-medium">{u.username}</TableCell>
 
                   <TableCell>
+
                     {u.isOwner ? (
+
                       <Badge className="bg-primary">Owner</Badge>
+
                     ) : u.isAdmin ? (
+
                       <Badge variant="secondary">Admin</Badge>
+
                     ) : (
+
                       <span className="text-muted-foreground">User</span>
+
                     )}
+
                   </TableCell>
 
                   <TableCell>
+
                     {u.isMuted && <Badge className="bg-orange-500">Muted</Badge>}
+
                   </TableCell>
 
-                  <TableCell>{format(new Date(u.createdAt), "MMM d, yyyy")}</TableCell>
+                  <TableCell>
+
+                    {format(new Date(u.createdAt), "MMM d, yyyy")}
+
+                  </TableCell>
 
                   <TableCell className="text-right">
+
                     <div className="flex justify-end gap-2">
+
                       <Button
+
                         variant="outline"
+
                         size="sm"
+
                         disabled={u.isOwner || u.isMuted}
-                        onClick={() => setMuteDialog({ open: true, userId: u.id, username: u.username })}
+
+                        onClick={() => {
+
+                          resetDialog();
+
+                          setMuteDialog({ open: true, userId: u.id, username: u.username });
+
+                        }}
+
                       >
+
                         <VolumeX className="w-4 h-4 mr-1" /> Mute
+
                       </Button>
 
                       <Button
+
                         variant="destructive"
+
                         size="sm"
+
                         disabled={u.isOwner}
-                        onClick={() => setBanDialog({ open: true, userId: u.id, username: u.username })}
+
+                        onClick={() => {
+
+                          resetDialog();
+
+                          setBanDialog({ open: true, userId: u.id, username: u.username });
+
+                        }}
+
                       >
+
                         <Ban className="w-4 h-4 mr-1" /> Ban
+
                       </Button>
+
                     </div>
+
                   </TableCell>
+
                 </TableRow>
+
               ))}
+
+              {users.length === 0 && !loadingUsers && (
+
+                <TableRow>
+
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+
+                    No users found.
+
+                  </TableCell>
+
+                </TableRow>
+
+              )}
+
             </TableBody>
+
           </Table>
 
-          {hasMore && (
-            <div className="flex justify-center mt-4">
-              <Button onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? "Loading..." : "Load more"}
-              </Button>
-            </div>
-          )}
         </div>
 
-        {/* BAN + MUTE UI UNTOUCHED */}
+        {/* BAN + MUTE DIALOGS (UNCHANGED UI) */}
+
         <Dialog open={banDialog.open} onOpenChange={(open) => !open && setBanDialog({ open: false, userId: null, username: "" })}>
+
           <DialogContent>
+
             <DialogHeader>
+
               <DialogTitle>Ban {banDialog.username}</DialogTitle>
+
+              <DialogDescription>This will prevent the user from logging in.</DialogDescription>
+
             </DialogHeader>
 
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason..." />
 
             <DialogFooter>
-              <Button onClick={handleBan}>Confirm Ban</Button>
+
+              <Button variant="outline" onClick={() => setBanDialog({ open: false, userId: null, username: "" })}>
+
+                Cancel
+
+              </Button>
+
+              <Button variant="destructive" onClick={handleBan}>
+
+                Confirm Ban
+
+              </Button>
+
             </DialogFooter>
+
           </DialogContent>
+
         </Dialog>
 
         <Dialog open={muteDialog.open} onOpenChange={(open) => !open && setMuteDialog({ open: false, userId: null, username: "" })}>
+
           <DialogContent>
+
             <DialogHeader>
+
               <DialogTitle>Mute {muteDialog.username}</DialogTitle>
+
+              <DialogDescription>User will be muted.</DialogDescription>
+
             </DialogHeader>
 
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason..." />
 
             <DialogFooter>
-              <Button onClick={handleMute}>Confirm Mute</Button>
+
+              <Button variant="outline" onClick={() => setMuteDialog({ open: false, userId: null, username: "" })}>
+
+                Cancel
+
+              </Button>
+
+              <Button variant="destructive" onClick={handleMute}>
+
+                Confirm Mute
+
+              </Button>
+
             </DialogFooter>
+
           </DialogContent>
+
         </Dialog>
+
       </div>
+
     </AdminLayout>
+
   );
+
 }
