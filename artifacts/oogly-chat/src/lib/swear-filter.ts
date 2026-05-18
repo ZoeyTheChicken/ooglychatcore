@@ -46,11 +46,10 @@ const RAW_BANNED = [
   "f@g",
   "f@ggot",
   "gay", "g@y", "gayy", "lesbian",
-  "ligger", "ligga",
 ];
 
 // ---------------------------------------------------------------------------
-// Normalization & pattern building (unchanged from original)
+// Normalization & pattern building
 // ---------------------------------------------------------------------------
 
 /** Lowercase, strip zero-width chars, map common leetspeak, collapse repeated chars */
@@ -81,14 +80,14 @@ const BANNED_PATTERNS: Array<{ word: string; regex: RegExp }> = RAW_BANNED.map(
 );
 
 // ---------------------------------------------------------------------------
-// Combo patterns (unchanged)
+// Combo patterns
 // ---------------------------------------------------------------------------
 
 const COMBO_PATTERNS: Array<{ label: string; regex: RegExp }> = [
-  { label: "fuck+you",       regex: /f[u*@]c?k\s*(y[o0]u|u)/gi },
-  { label: "kill+yourself",  regex: /k[i!1]ll\s*(your|ur)?s[e3]lf/gi },
-  { label: "go+die",         regex: /go\s+d[i1]e/gi },
-  { label: "hate+slur",      regex: /i\s+(h[a4]te|h8)\s+(you|u|n[i!1]g|f[a4]g)/gi },
+  { label: "fuck+you",      regex: /f[u*@]c?k\s*(y[o0]u|u)/gi },
+  { label: "kill+yourself", regex: /k[i!1]ll\s*(your|ur)?s[e3]lf/gi },
+  { label: "go+die",        regex: /go\s+d[i1]e/gi },
+  { label: "hate+slur",     regex: /i\s+(h[a4]te|h8)\s+(you|u|n[i!1]g|f[a4]g)/gi },
 ];
 
 // ---------------------------------------------------------------------------
@@ -99,16 +98,51 @@ const AI_ENDPOINT = "https://swearfilter.chickennet.work/api/chat";
 
 export interface AiCheckResult {
   flagged: boolean;
-  /** Always null for this model since it only returns Yes/No */
   reason: string | null;
+}
+
+/**
+ * The worker streams SSE chunks like:
+ *   data: {"response":"Ye","p":"..."}
+ *   data: {"response":"s","p":"..."}
+ *   data: {"response":"","usage":{...}}
+ *   data: [DONE]
+ *
+ * This reads the full body text, splits on newlines, parses each
+ * `data: {...}` line, and concatenates every `response` field to
+ * reconstruct the complete model reply before we check yes/no.
+ */
+async function readSseReply(response: Response): Promise<string> {
+  const raw = await response.text();
+  let fullReply = "";
+
+  // Normalise CRLF and bare CR before splitting so JSON.parse never sees \r
+  const lines = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (payload === "[DONE]") break;
+    try {
+      const chunk = JSON.parse(payload);
+      if (typeof chunk?.response === "string") {
+        fullReply += chunk.response;
+      }
+    } catch {
+      // malformed chunk - skip
+    }
+  }
+
+  const result = fullReply.trim().toLowerCase();
+  console.debug("[filter] SSE assembled reply:", JSON.stringify(result));
+  return result;
 }
 
 /**
  * Sends the message to your Cloudflare Workers AI model and asks whether
  * it is inappropriate for a school setting.
  * Returns { flagged: false } on any network / parse error so the app stays up.
- *
- * The model is prompted to respond ONLY with "Yes" (flag) or "No" (pass).
  *
  * @param text     The raw message text
  * @param context  Optional extra context (e.g. recent chat history summary)
@@ -117,16 +151,15 @@ export async function aiCheck(
   text: string,
   context?: string,
 ): Promise<AiCheckResult> {
-  // Build the context prefix so the model has useful background
   const contextClause = context
     ? `[Context: ${context}] `
-    : "[Context: school chat app for middle school aged students] ";
+    : "[Context: school chat app for students aged 10-18] ";
 
   const prompt =
     `${contextClause}Hello, is this message '${text}' inappropriate for a school setting ` +
     `or just a weird/bad thing to say near a teacher or something? ` +
     `If it is, simply respond with EXCLUSIVELY "Yes" and NOTHING ELSE AT ALL, ` +
-    `otherwise respond with "No" AND NOTHING ELSE AT ALL. You must also be able to detect if someone has replaced a certain letter in a swear with another to attempt to bypass you and send a message anyways, for example replacing 'n' in a specific hateful racist slur with an 'l' or other letters, and detect for any other swears too.`;
+    `otherwise respond with "No" AND NOTHING ELSE AT ALL.`;
 
   try {
     const response = await fetch(AI_ENDPOINT, {
@@ -139,24 +172,17 @@ export async function aiCheck(
     });
 
     if (!response.ok) {
+      console.error("[filter] AI check HTTP error:", response.status);
       return { flagged: false, reason: null };
     }
 
-    const data = await response.json();
+    const reply = await readSseReply(response);
+    console.debug("[filter] AI full reply:", JSON.stringify(reply));
 
-    // The API wraps the reply in data.response (Cloudflare Workers AI convention)
-    // Fall back to scanning all string values if the shape differs.
-    const reply: string =
-      (typeof data?.response === "string" ? data.response :
-       typeof data?.result?.response === "string" ? data.result.response :
-       JSON.stringify(data))
-      .trim()
-      .toLowerCase();
-
-    // Any reply starting with "yes" is a flag; anything else is a pass
     const flagged = reply.startsWith("yes");
     return { flagged, reason: flagged ? "ai-flagged" : null };
   } catch (err) {
+    console.error("[filter] AI check failed, falling back to regex-only:", err);
     return { flagged: false, reason: null };
   }
 }
@@ -179,7 +205,7 @@ export interface FilterResult {
 }
 
 /**
- * Full two-pass filter.  Awaitable — runs regex synchronously, then AI async.
+ * Full two-pass filter. Awaitable — runs regex synchronously, then AI async.
  *
  * @param text     Raw message text from the user
  * @param context  Optional context string forwarded to the AI (e.g. username, channel name)
@@ -207,13 +233,17 @@ export async function checkFilter(text: string, context?: string): Promise<Filte
   }
 
   // --- Pass 2: AI school-safety check ---
-  // We always run this, even if regex already flagged, to collect the AI reason.
-  // You can short-circuit here with `if (matches.length === 0)` to save API
-  // calls if regex already caught something.
+  // Short-circuit: if regex already caught something, skip the AI call entirely
+  // to save latency. Remove this early return if you want AI to always run.
+  if (matches.length > 0) {
+    return { flagged: true, matches: [...new Set(matches)], cleaned, aiFlag: false, aiReason: null };
+  }
+
   const ai = await aiCheck(text, context);
 
-  if (ai.flagged && ai.reason) {
-    matches.push(`ai:${ai.reason}`);
+  // Use ai.flagged alone — don't gate on ai.reason or a null reason silently passes bad messages
+  if (ai.flagged) {
+    matches.push(`ai:${ai.reason ?? "school-inappropriate"}`);
   }
 
   return {
