@@ -15,11 +15,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChatLayout } from "@/components/layout/ChatLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Reply, X, Trash2, SmilePlus, Info, Copy, Check } from "lucide-react";
+import { Send, Reply, X, Trash2, SmilePlus, Info, Copy, Check, ShieldAlert } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
+import { checkFilter } from "@/lib/swear-filter";
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"]
 
@@ -51,6 +52,41 @@ function renderContent(text: string, isMe: boolean) {
   );
 }
 
+interface TosToastProps {
+  visible: boolean;
+  onDone: () => void;
+}
+
+function TosToast({ visible, onDone }: TosToastProps) {
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setFading(false);
+    const fadeTimer = setTimeout(() => setFading(true), 3600);
+    const doneTimer = setTimeout(() => onDone(), 4000);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, [visible, onDone]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-start gap-3 bg-destructive text-destructive-foreground rounded-xl shadow-lg px-5 py-4 max-w-sm w-[calc(100%-2rem)] transition-opacity duration-400 ${fading ? "opacity-0" : "opacity-100"}`}
+      role="alert"
+      aria-live="assertive"
+    >
+      <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
+      <p className="text-sm leading-snug">
+        The message you have just attempted to send is against the Oogly Chat terms of service. Do not attempt to send a message that is against the terms of service again.
+      </p>
+    </div>
+  );
+}
+
 export default function ChatView() {
   const { user, isAdmin, isOwner } = useAuth();
   const { subscribe, sendWsMessage } = useWs();
@@ -60,6 +96,7 @@ export default function ChatView() {
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
   const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [tosBlocked, setTosBlocked] = useState(false);
   const PAGE_SIZE = 100;
   const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -69,15 +106,15 @@ export default function ChatView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const initialScrollDone = useRef(false);
 
-const { data: messages = [], refetch, isFetching } = useListMessages(
-  { limit: messageLimit },
-  {
-    query: {
-      refetchInterval: false,
-      keepPreviousData: true,
-    },
-  }
-);
+  const { data: messages = [], refetch, isFetching } = useListMessages(
+    { limit: messageLimit },
+    {
+      query: {
+        refetchInterval: false,
+        keepPreviousData: true,
+      },
+    }
+  );
 
   const { data: announcements = [] } = useListAnnouncements();
   const latestAnnouncement = announcements[0];
@@ -99,29 +136,21 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
   }, []);
 
   const loadMoreMessages = async () => {
-  if (loadingMore) return;
+    if (loadingMore) return;
+    const scrollEl = scrollRef.current;
+    const oldHeight = scrollEl?.scrollHeight ?? 0;
+    setLoadingMore(true);
+    const nextLimit = messageLimit + PAGE_SIZE;
+    setMessageLimit(nextLimit);
+    setTimeout(() => {
+      if (scrollEl) {
+        const newHeight = scrollEl.scrollHeight;
+        scrollEl.scrollTop += newHeight - oldHeight;
+      }
+      setLoadingMore(false);
+    }, 100);
+  };
 
-  const scrollEl = scrollRef.current;
-  const oldHeight = scrollEl?.scrollHeight ?? 0;
-
-  setLoadingMore(true);
-
-  const nextLimit = messageLimit + PAGE_SIZE;
-
-  setMessageLimit(nextLimit);
-
-  // wait for render
-  setTimeout(() => {
-    if (scrollEl) {
-      const newHeight = scrollEl.scrollHeight;
-      scrollEl.scrollTop += newHeight - oldHeight;
-    }
-
-    setLoadingMore(false);
-  }, 100);
-};
-
-  // Force scroll on first message load
   useEffect(() => {
     if (messages.length > 0 && !initialScrollDone.current) {
       initialScrollDone.current = true;
@@ -131,7 +160,6 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
     }
   }, [messages]);
 
-  // Clear stale typing indicators
   useEffect(() => {
     const interval = setInterval(() => {
       setTypingUsers((prev) => {
@@ -146,7 +174,6 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
     return () => clearInterval(interval);
   }, []);
 
-  // Subscribe to WebSocket events
   useEffect(() => {
     const unsubscribe = subscribe((event) => {
       switch (event.type) {
@@ -189,9 +216,17 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
     sendWsMessage({ type: "typing", payload: { username: user.username } });
   }, [user?.username, sendWsMessage]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
+
+    const result = await checkFilter(content);
+    if (result.flagged) {
+      setTosBlocked(false);
+      requestAnimationFrame(() => setTosBlocked(true));
+      return;
+    }
+
     sendMutation.mutate(
       { data: { content, replyToId: replyTo?.id } },
       {
@@ -229,6 +264,7 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
   return (
     <ChatLayout>
       <TrollOverlay effect={activeTroll} onDone={() => setActiveTroll(null)} />
+      <TosToast visible={tosBlocked} onDone={() => setTosBlocked(false)} />
 
       {latestAnnouncement && dismissedAnnouncement !== latestAnnouncement.id && (
         <div className="bg-primary/10 border-b border-primary/20 px-4 py-2.5 flex items-start gap-3">
@@ -240,15 +276,15 @@ const { data: messages = [], refetch, isFetching } = useListMessages(
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
         <div className="max-w-4xl mx-auto mb-4 flex justify-center">
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={loadMoreMessages}
-    disabled={loadingMore || isFetching}
-  >
-    {loadingMore ? "Loading older messages..." : "Load older messages"}
-  </Button>
-</div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMoreMessages}
+            disabled={loadingMore || isFetching}
+          >
+            {loadingMore ? "Loading older messages..." : "Load older messages"}
+          </Button>
+        </div>
         <div className={`max-w-4xl mx-auto flex flex-col justify-end min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
           {[...messages].reverse().map((msg) => {
             const isOwn = msg.authorId === user?.id;
