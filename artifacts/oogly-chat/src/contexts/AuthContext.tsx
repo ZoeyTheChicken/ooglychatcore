@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: serverUser, isLoading } = useGetMe({
     query: {
       enabled: !!token,
-      refetchInterval: 30000,
+      refetchInterval: 10000,
       retry: false,
     },
   });
