@@ -46,6 +46,7 @@ const RAW_BANNED = [
   "f@g",
   "f@ggot",
   "gay", "g@y", "gayy", "lesbian",
+  "ligger", "ligga",
 ];
 
 // ---------------------------------------------------------------------------
@@ -125,7 +126,7 @@ export async function aiCheck(
     `${contextClause}Hello, is this message '${text}' inappropriate for a school setting ` +
     `or just a weird/bad thing to say near a teacher or something? ` +
     `If it is, simply respond with EXCLUSIVELY "Yes" and NOTHING ELSE AT ALL, ` +
-    `otherwise respond with "No" AND NOTHING ELSE AT ALL.`;
+    `otherwise respond with "No" AND NOTHING ELSE AT ALL. You must also be able to detect if someone has replaced a certain letter in a swear with another to attempt to bypass you and send a message anyways, for example replacing 'n' in a specific hateful racist slur with an 'l' or other letters, and detect for any other swears too.`;
 
   try {
     const response = await fetch(AI_ENDPOINT, {
