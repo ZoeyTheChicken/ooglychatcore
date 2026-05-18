@@ -159,7 +159,7 @@ export async function aiCheck(
     `${contextClause}Hello, is this message '${text}' inappropriate for a school setting ` +
     `or just a weird/bad thing to say near a teacher or something? ` +
     `If it is, simply respond with EXCLUSIVELY "Yes" and NOTHING ELSE AT ALL, ` +
-    `otherwise respond with "No" AND NOTHING ELSE AT ALL.`;
+    `otherwise respond with "No" AND NOTHING ELSE AT ALL. Please say 'No' for mild language such as 'crap' 'sucks' or 'hell' though as I think that is alright to say.`;
 
   try {
     const response = await fetch(AI_ENDPOINT, {
