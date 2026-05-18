@@ -2,8 +2,7 @@ import http from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { createWss } from "./lib/ws-broadcast";
-import { db } from "./lib/db";
-import { sql } from "drizzle-orm";
+import { pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -18,7 +17,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 async function cleanupExpired() {
   try {
-    await db.execute(sql`
+    await pool.query(`
       DELETE FROM mutes WHERE is_permanent = false AND expires_at < NOW();
       DELETE FROM bans  WHERE is_permanent = false AND expires_at < NOW();
     `);
