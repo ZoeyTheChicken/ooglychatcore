@@ -60,12 +60,13 @@ export default function ChatView() {
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
   const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const PAGE_SIZE = 100;
+  const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypeSentRef = useRef(0);
-  const PAGE_SIZE = 100;
-const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
-const [loadingMore, setLoadingMore] = useState(false);
+  const MSG_QUERY_PARAMS = { limit: messageLimit };
+  const [loadingMore, setLoadingMore] = useState(false);
   const initialScrollDone = useRef(false);
 
 const { data: messages = [], refetch, isFetching } = useListMessages(
