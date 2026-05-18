@@ -1,8 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { db, usersTable } from "@workspace/db";
-import { bansTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
-import { userInfo } from "node:os";
+import { bansTable, mutesTable } from "@workspace/db";
+import { and, eq, or, isNull, gt } from "drizzle-orm";
 
 // Simple in-memory session store: token -> userId
 // In production, use Redis or a DB-backed session table
@@ -44,28 +43,56 @@ export async function requireAuth(
     res.status(401).json({ error: "User not found" });
     return;
   }
+
+  // Check for an active ban — permanent OR not yet expired
   const [activeBan] = await db
-  .select()
-  .from(bansTable)
-  .where(eq(bansTable.userId, user.id));
+    .select()
+    .from(bansTable)
+    .where(
+      and(
+        eq(bansTable.userId, user.id),
+        or(
+          eq(bansTable.isPermanent, true),
+          gt(bansTable.expiresAt, new Date()),
+        ),
+      ),
+    );
+
+  if (activeBan) {
+    sessions.delete(token);
+    res.status(403).json({
+      banned: true,
+      reason: activeBan.reason,
+      expiresAt: activeBan.expiresAt,
+    });
+    return;
+  }
+
+  // Check for an active mute — permanent OR not yet expired
+  const [activeMute] = await db
+    .select()
+    .from(mutesTable)
+    .where(
+      and(
+        eq(mutesTable.userId, user.id),
+        or(
+          eq(mutesTable.isPermanent, true),
+          gt(mutesTable.expiresAt, new Date()),
+        ),
+      ),
+    );
 
   // Update last seen
   await db
     .update(usersTable)
-    .set({ lastSeen: new Date() })
+    .set({
+      lastSeen: new Date(),
+      isMuted: !!activeMute,
+    })
     .where(eq(usersTable.id, userId));
-  if (activeBan) {
-    sessions.delete(token);
 
-    res.status(403).json({
-      banned: true,
-      reason: activeBan.reason,
-      expiresAt: activeBan.expiresAt
-    });
-
-    return;
-  }
-  req.currentUser = user;
+  // Attach mute state to the user object so /auth/me and other routes see it
+  req.currentUser = { ...user, isMuted: !!activeMute };
   next();
 }
 
