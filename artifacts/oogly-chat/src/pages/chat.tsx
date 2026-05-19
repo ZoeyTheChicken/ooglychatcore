@@ -211,10 +211,11 @@ export default function ChatView() {
             prev.map((m) => m.id === event.payload.id ? { ...m, deleted: true, content: "[deleted]" } : m)
           );
           break;
-        case "reaction_update":
-          fetchMessages(0, false);
-          setOffset(PAGE_SIZE);
-          break;
+case "reaction_update":
+  // Just refetch to get updated reactions
+  fetchMessages(0, false);
+  setOffset(PAGE_SIZE);
+  break;
         case "typing":
           if (event.payload.username !== user?.username) {
             setTypingUsers((prev) => new Map(prev).set(event.payload.username, event.payload.timestamp));
@@ -238,77 +239,76 @@ export default function ChatView() {
     sendWsMessage({ type: "typing", payload: { username: user.username } });
   }, [user?.username, sendWsMessage]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) return;
+const handleSend = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!content.trim()) return;
 
-    const result = await checkFilter(content);
-    if (result.flagged) {
-      setTosBlocked(false);
-      requestAnimationFrame(() => setTosBlocked(true));
-      return;
-    }
+  const result = await checkFilter(content);
+  if (result.flagged) {
+    setTosBlocked(false);
+    requestAnimationFrame(() => setTosBlocked(true));
+    return;
+  }
 
-    try {
-      const response = await fetch(`${API_BASE}/messages`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({ content, replyToId: replyTo?.id }),
-      });
-      
-      if (!response.ok) throw new Error("Failed to send message");
-      
-      const newMessage = await response.json();
-      setMessages(prev => [...prev, newMessage]);
-      setContent("");
-      setReplyTo(null);
-      setTimeout(() => scrollToBottom(true), 50);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-    }
-  };
+  try {
+    const response = await fetch(`${API_BASE}/messages`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ content, replyToId: replyTo?.id }),
+    });
+    
+    if (!response.ok) throw new Error("Failed to send message");
+    
+    // Don't add the message here - WebSocket will broadcast it
+    // Just clear the input and reply
+    setContent("");
+    setReplyTo(null);
+    // Scroll will happen when WebSocket adds the message
+  } catch (error) {
+    console.error("Failed to send message:", error);
+  }
+};
 
-  const handleDelete = async (messageId: number) => {
-    try {
-      const response = await fetch(`${API_BASE}/messages/${messageId}`, {
+ const handleDelete = async (messageId: number) => {
+  try {
+    const response = await fetch(`${API_BASE}/messages/${messageId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    
+    if (!response.ok) throw new Error("Failed to delete message");
+    
+    // Don't update state here - WebSocket will broadcast the deletion
+    // The WebSocket handler will update the messages array
+  } catch (error) {
+    console.error("Failed to delete message:", error);
+  }
+};
+
+const handleReaction = async (messageId: number, emoji: string, hasReacted: boolean) => {
+  try {
+    let response;
+    if (hasReacted) {
+      response = await fetch(`${API_BASE}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
         method: "DELETE",
         headers: getHeaders(),
       });
-      
-      if (!response.ok) throw new Error("Failed to delete message");
-      
-      setMessages(prev =>
-        prev.map((m) => m.id === messageId ? { ...m, deleted: true, content: "[deleted]" } : m)
-      );
-    } catch (error) {
-      console.error("Failed to delete message:", error);
+    } else {
+      response = await fetch(`${API_BASE}/messages/${messageId}/reactions`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ emoji }),
+      });
     }
-  };
-
-  const handleReaction = async (messageId: number, emoji: string, hasReacted: boolean) => {
-    try {
-      let response;
-      if (hasReacted) {
-        response = await fetch(`${API_BASE}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
-          method: "DELETE",
-          headers: getHeaders(),
-        });
-      } else {
-        response = await fetch(`${API_BASE}/messages/${messageId}/reactions`, {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({ emoji }),
-        });
-      }
-      
-      if (!response.ok) throw new Error("Failed to toggle reaction");
-      
-      fetchMessages(0, false);
-      setOffset(PAGE_SIZE);
-    } catch (error) {
-      console.error("Failed to toggle reaction:", error);
-    }
-  };
+    
+    if (!response.ok) throw new Error("Failed to toggle reaction");
+    
+    // Don't refetch here - WebSocket will broadcast the reaction update
+    // The WebSocket handler will trigger a refetch
+  } catch (error) {
+    console.error("Failed to toggle reaction:", error);
+  }
+};
 
   const copyMessage = (id: number, text: string) => {
     navigator.clipboard.writeText(text);
