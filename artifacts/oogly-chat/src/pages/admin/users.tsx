@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 type DurationType = "permanent" | "minutes" | "hours" | "days";
 
@@ -41,6 +42,7 @@ function calcExpiresAt(type: DurationType, amount: number) {
     expiresAt: new Date(Date.now() + ms).toISOString(),
   };
 }
+const { user: currentUser, logout } = useAuth();
 
 function formatDuration(type: DurationType, amount: number) {
   if (type === "permanent") return "permanently";
@@ -143,6 +145,16 @@ export default function AdminUsers() {
           });
 
           setBanDialog({ open: false, userId: null, username: "" });
+          // Check if the banned user is the currently logged-in user
+if (banDialog.userId === currentUser?.id) {
+  const banInfo = {
+    reason: reason,
+    expiresAt: expiresAt || null,
+  };
+  localStorage.setItem("banInfo", JSON.stringify(banInfo));
+  logout();
+  window.location.href = "/banned";
+}
           resetDialog();
           refetch();
         },
