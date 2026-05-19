@@ -36,23 +36,27 @@ export default function Login() {
           setLocation("/");
         },
         onError: (error: any) => {
-          // Check if this is a ban response
-          if (error?.response?.status === 403 && error?.response?.data?.banned) {
-            const banData = error.response.data;
-            const banInfo = {
-              reason: banData.reason || "No reason provided",
-              expiresAt: banData.expiresAt || null,
-            };
-            localStorage.setItem("banInfo", JSON.stringify(banInfo));
-            setLocation("/banned");
-            return;
+          // Try to get the full error response
+          const errorData = error?.response?.data || error?.data;
+          
+          // Check if this is a ban response (403 with banned flag)
+          if (error?.response?.status === 403 || error?.status === 403) {
+            if (errorData?.banned === true) {
+              const banInfo = {
+                reason: errorData.reason || "No reason provided",
+                expiresAt: errorData.expiresAt || null,
+              };
+              localStorage.setItem("banInfo", JSON.stringify(banInfo));
+              setLocation("/banned");
+              return;
+            }
           }
           
           // Handle other errors
           toast({
             variant: "destructive",
             title: "Login failed",
-            description: error?.response?.data?.error || error.message || "Invalid username or password",
+            description: errorData?.error || error.message || "Invalid username or password",
           });
         },
       }
