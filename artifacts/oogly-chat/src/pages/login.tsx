@@ -57,7 +57,7 @@ export default function Login() {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Something went wrong",
+        description: "There was a critical login error, you are either BANNED, or something is wrong with the Oogly Chat server connection.",
       });
     }
   };
