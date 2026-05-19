@@ -134,8 +134,6 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const { content, replyToId } = parsed.data;
-
  const { content, replyToId } = parsed.data;
 
 // Add 'await' here
