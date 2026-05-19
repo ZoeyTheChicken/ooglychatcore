@@ -4,9 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// 🔄 Safe fallback variables instead of throwing strict crash errors
 const port = Number(process.env.PORT || "8080");
-const basePath = process.env.BASE_PATH || "/"; // 👈 Defaults to '/' if missing on Vercel
+const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   base: basePath,
@@ -14,7 +13,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    // ⚙️ Replit internal dev plugins only run locally, safely skipped on Vercel
     ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
       ? [
           await import("@replit/vite-plugin-cartographer").then((m) =>
@@ -48,10 +46,26 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    proxy: {
+      '/api': {
+        target: 'https://chatapi.zoeyaviation.com',
+        changeOrigin: true,
+        rewrite: (path) => path,
+        secure: true,
+      }
+    }
   },
   preview: {
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'https://chatapi.zoeyaviation.com',
+        changeOrigin: true,
+        rewrite: (path) => path,
+        secure: true,
+      }
+    }
   },
 });
