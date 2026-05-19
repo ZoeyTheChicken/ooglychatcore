@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -42,7 +41,6 @@ function calcExpiresAt(type: DurationType, amount: number) {
     expiresAt: new Date(Date.now() + ms).toISOString(),
   };
 }
-const { user: currentUser, logout } = useAuth();
 
 function formatDuration(type: DurationType, amount: number) {
   if (type === "permanent") return "permanently";
@@ -50,9 +48,9 @@ function formatDuration(type: DurationType, amount: number) {
 }
 
 export default function AdminUsers() {
+  const { user: currentUser, logout } = useAuth();
   const [search, setSearch] = useState("");
 
-  // pagination state (FIXED)
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -87,14 +85,12 @@ export default function AdminUsers() {
   const banMutation = useBanUser();
   const muteMutation = useMuteUser();
 
-  // RESET on search
   useEffect(() => {
     setPage(1);
     setAllUsers([]);
     setHasMore(true);
   }, [search]);
 
-  // APPEND USERS SAFELY
   useEffect(() => {
     if (!data?.users) return;
 
@@ -111,7 +107,6 @@ export default function AdminUsers() {
     setLoadingMore(false);
   }, [data, page]);
 
-  // FIXED LOAD MORE (NO HOOKS INSIDE FUNCTIONS)
   const loadMore = () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
@@ -144,17 +139,17 @@ export default function AdminUsers() {
             title: `${banDialog.username} banned ${formatDuration(durationType, durationAmount)}`,
           });
 
+          if (banDialog.userId === currentUser?.id) {
+            const banInfo = {
+              reason: reason,
+              expiresAt: expiresAt || null,
+            };
+            localStorage.setItem("banInfo", JSON.stringify(banInfo));
+            logout();
+            window.location.href = "/banned";
+          }
+
           setBanDialog({ open: false, userId: null, username: "" });
-          // Check if the banned user is the currently logged-in user
-if (banDialog.userId === currentUser?.id) {
-  const banInfo = {
-    reason: reason,
-    expiresAt: expiresAt || null,
-  };
-  localStorage.setItem("banInfo", JSON.stringify(banInfo));
-  logout();
-  window.location.href = "/banned";
-}
           resetDialog();
           refetch();
         },
@@ -338,7 +333,6 @@ if (banDialog.userId === currentUser?.id) {
           )}
         </div>
 
-        {/* YOUR ORIGINAL BAN + MUTE UI KEPT */}
         <Dialog
           open={banDialog.open}
           onOpenChange={(open) =>
