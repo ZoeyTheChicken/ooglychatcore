@@ -1,4 +1,3 @@
-cat > /var/www/ooglychatcore/artifacts/oogly-chat/src/lib/api.ts << 'EOF'
 import axios from 'axios';
 
 const API_BASE_URL = 'https://chatapi.zoeyaviation.com/api';
