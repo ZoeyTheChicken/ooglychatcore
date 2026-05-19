@@ -1,3 +1,4 @@
+// contexts/AuthContext.tsx (updated)
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useGetMe, User } from "@workspace/api-client-react";
 
@@ -13,6 +14,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   clearBanInfo: () => void;
+  checkBanStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const { data: serverUser, isLoading, error } = useGetMe({
+  const { data: serverUser, isLoading, error, refetch } = useGetMe({
     query: {
       enabled: !!token,
       refetchInterval: 10000,
@@ -37,13 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Handle ban errors from API
   useEffect(() => {
-    if (error && (error as any)?.response?.status === 403) {
-      const banData = (error as any)?.response?.data;
-      if (banData?.banned) {
+    if (error) {
+      console.log("Auth error:", error);
+      // Check if it's a ban response
+      const axiosError = error as any;
+      if (axiosError?.response?.status === 403 && axiosError?.response?.data?.banned) {
+        const banData = axiosError.response.data;
         const banInfoData = {
-          reason: banData.reason,
+          reason: banData.reason || "No reason provided",
           expiresAt: banData.expiresAt || null,
         };
+        console.log("Setting ban info:", banInfoData);
         setBanInfo(banInfoData);
         localStorage.setItem("banInfo", JSON.stringify(banInfoData));
         setToken(null);
@@ -62,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("oogly_token", newToken);
     setToken(newToken);
     setLocalUser(userObj);
-    clearBanInfo(); // Clear any stored ban info on successful login
+    clearBanInfo();
   };
 
   const logout = () => {
@@ -77,6 +83,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("banInfo");
   };
 
+  const checkBanStatus = async () => {
+    if (!token) return;
+    try {
+      await refetch();
+    } catch (err: any) {
+      if (err?.response?.status === 403 && err?.response?.data?.banned) {
+        const banData = err.response.data;
+        const banInfoData = {
+          reason: banData.reason || "No reason provided",
+          expiresAt: banData.expiresAt || null,
+        };
+        setBanInfo(banInfoData);
+        localStorage.setItem("banInfo", JSON.stringify(banInfoData));
+        setToken(null);
+        localStorage.removeItem("oogly_token");
+      }
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -89,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     clearBanInfo,
+    checkBanStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
