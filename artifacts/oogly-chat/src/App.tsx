@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { setBaseUrl } from "@workspace/api-client-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +25,8 @@ import AdminLogs from "@/pages/admin/logs";
 import AdminTroll from "@/pages/admin/troll";
 
 const queryClient = new QueryClient();
+
+setBaseUrl("https://chatapi.zoeyaviation.com");
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
   const { user, isLoading, isAdmin, isOwner, isBanned } = useAuth();
