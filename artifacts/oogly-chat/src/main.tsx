@@ -1,18 +1,20 @@
+// /var/www/ooglychatcore/artifacts/oogly-chat/src/main.tsx
+import { setBaseUrl } from "@workspace/api-client-react";
+
+// Set the API base URL BEFORE creating any API calls
+setBaseUrl("https://chatapi.zoeyaviation.com");
+
 // 🚀 Self-Cleaning Global WebSocket Interceptor
 if (typeof window !== "undefined") {
   const OriginalWebSocket = window.WebSocket;
 
   window.WebSocket = function (url, protocols) {
-    // If the incoming URL is empty or corrupted, catch it before it can crash the tab
     let finalUrl = "wss://chatapi.zoeyaviation.com/api/ws";
 
     if (typeof url === "string" && url.trim().length > 0) {
-      // If it looks like a valid target domain, clean out any double-protocol symbols
       if (!url.includes("ooglychatlearning.vercel.app/api/ws")) {
-        // Strip out bad prefix symbols, formatting it down to a clean domain string
         let cleanInput = url.replace(/^wss?:\/\//i, "").replace(/^\/\//, "").replace(/^:/, "");
         
-        // If the resulting clean domain points to your backend server, apply it safely
         if (cleanInput.includes("chatapi.zoeyaviation.com")) {
           finalUrl = `wss://${cleanInput}`;
         }
