@@ -29,19 +29,43 @@ function serializeMessage(msg: any, authorUsername: string, reactions: any[] = [
 }
 
 router.get("/messages", requireAuth, async (req, res): Promise<void> => {
-  const queryResult = ListMessagesQueryParams.safeParse(req.query);
-  const before = queryResult.success ? queryResult.data.before : undefined;
+  // Parse pagination parameters
+  const limit = parseInt(req.query.limit as string) || 50;
+  const offset = parseInt(req.query.offset as string) || 0;
+  
+  // Cap limit to prevent abuse (max 200 messages per request)
+  const safeLimit = Math.min(limit, 200);
+  
+  // Optional: cursor-based pagination (for infinite scroll)
+  const before = req.query.before ? parseInt(req.query.before as string) : undefined;
 
-  const conditions = [];
+  let conditions = [];
   if (before) {
     conditions.push(lt(messagesTable.id, before));
   }
 
-  const msgs = await db
+  // Get total count for pagination info
+  const [totalResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(messagesTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+  
+  const total = Number(totalResult?.count) || 0;
+
+  // Get paginated messages
+  let query = db
     .select()
     .from(messagesTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(messagesTable.id))
+    .limit(safeLimit);
+  
+  // Apply offset if using page-based pagination (not cursor)
+  if (!before && offset > 0) {
+    query = query.offset(offset);
+  }
+  
+  const msgs = await query;
 
   const authorIds = [...new Set(msgs.map((m) => m.authorId))];
   let users: Array<{ id: number; username: string }> = [];
@@ -83,7 +107,17 @@ router.get("/messages", requireAuth, async (req, res): Promise<void> => {
     return serializeMessage(msg, userMap.get(msg.authorId) ?? "unknown", reactions);
   });
 
-  res.json(result);
+  // Return paginated response with metadata
+  res.json({
+    messages: result,
+    pagination: {
+      limit: safeLimit,
+      offset: offset,
+      total: total,
+      hasMore: offset + result.length < total,
+      nextOffset: offset + safeLimit,
+    },
+  });
 });
 
 router.post("/messages", requireAuth, async (req, res): Promise<void> => {
@@ -98,7 +132,7 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
         eq(bansTable.userId, user.id),
         or(
           eq(bansTable.isPermanent, true),
-          gt(bansTable.expiresAt, now),
+          sql`${bansTable.expiresAt} > NOW()`,
         ),
       ),
     )
@@ -117,7 +151,7 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
         eq(mutesTable.userId, user.id),
         or(
           eq(mutesTable.isPermanent, true),
-          gt(mutesTable.expiresAt, now),
+          sql`${mutesTable.expiresAt} > NOW()`,
         ),
       ),
     )
@@ -134,20 +168,19 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
- const { content, replyToId } = parsed.data;
+  const { content, replyToId } = parsed.data;
 
-// Add 'await' here
-const filterResult = await checkFilter(content);
-if (filterResult.flagged) {
-  res.status(400).json({
-    error: "Your message contains prohibited content.",
-    matches: filterResult.matches,
-  });
-  return;
-}
+  const filterResult = await checkFilter(content);
+  if (filterResult.flagged) {
+    res.status(400).json({
+      error: "Your message contains prohibited content.",
+      matches: filterResult.matches,
+    });
+    return;
+  }
 
-let replyToContent: string | undefined;
-let replyToUsername: string | undefined;
+  let replyToContent: string | undefined;
+  let replyToUsername: string | undefined;
 
   if (replyToId) {
     const [replyMsg] = await db
