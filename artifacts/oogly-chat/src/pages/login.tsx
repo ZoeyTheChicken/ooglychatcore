@@ -1,9 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ const loginSchema = z.object({
 
 export default function Login() {
   const { login } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -25,42 +23,43 @@ export default function Login() {
     defaultValues: { username: "", password: "" },
   });
 
-  const loginMutation = useLogin();
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
 
-  const onSubmit = (values: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate(
-      { data: values },
-      {
-        onSuccess: (data) => {
-          login(data.token, data.user);
-          setLocation("/");
-        },
-        onError: (error: any) => {
-          // Try to get the full error response
-          const errorData = error?.response?.data || error?.data;
-          
-          // Check if this is a ban response (403 with banned flag)
-          if (error?.response?.status === 403 || error?.status === 403) {
-            if (errorData?.banned === true) {
-              const banInfo = {
-                reason: errorData.reason || "No reason provided",
-                expiresAt: errorData.expiresAt || null,
-              };
-              localStorage.setItem("banInfo", JSON.stringify(banInfo));
-              setLocation("/banned");
-              return;
-            }
-          }
-          
-          // Handle other errors
-          toast({
-            variant: "destructive",
-            title: "Login failed",
-            description: errorData?.error || error.message || "Invalid username or password",
-          });
-        },
+      const data = await response.json();
+
+      if (response.status === 403 && data.banned) {
+        localStorage.setItem('banInfo', JSON.stringify({
+          reason: data.reason,
+          expiresAt: data.expiresAt,
+        }));
+        window.location.href = '/banned';
+        return;
       }
-    );
+
+      if (response.ok) {
+        login(data.token, data.user);
+        window.location.href = '/';
+        return;
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: data.error || "Invalid username or password",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: "Something went wrong",
+      });
+    }
   };
 
   return (
@@ -99,8 +98,8 @@ export default function Login() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-login">
-                {loginMutation.isPending ? "Signing in…" : "Login"}
+              <Button type="submit" className="w-full">
+                Login
               </Button>
             </form>
           </Form>
