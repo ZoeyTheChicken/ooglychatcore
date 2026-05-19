@@ -23,6 +23,7 @@ import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
 import { checkFilter } from "@/lib/swear-filter";
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"]
+const PAGE_SIZE = 50; // Load 50 messages at a time
 
 function linkify(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -97,17 +98,17 @@ export default function ChatView() {
   const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [tosBlocked, setTosBlocked] = useState(false);
-  const PAGE_SIZE = 100;
-  const [messageLimit, setMessageLimit] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypeSentRef = useRef(0);
-  const MSG_QUERY_PARAMS = { limit: messageLimit };
-  const [loadingMore, setLoadingMore] = useState(false);
-  const initialScrollDone = useRef(false);
+  const initialLoadDone = useRef(false);
 
-  const { data: messages = [], refetch, isFetching } = useListMessages(
-    { limit: messageLimit },
+  const { data: messagesPage = [], refetch, isFetching } = useListMessages(
+    { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
     {
       query: {
         refetchInterval: false,
@@ -128,6 +129,21 @@ export default function ChatView() {
   const addReactionMutation = useAddReaction();
   const removeReactionMutation = useRemoveReaction();
 
+  // Accumulate messages as they load
+  useEffect(() => {
+    if (messagesPage.length > 0) {
+      if (page === 1) {
+        setAllMessages(messagesPage);
+      } else {
+        setAllMessages(prev => [...prev, ...messagesPage]);
+      }
+      if (messagesPage.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+    }
+    setLoadingMore(false);
+  }, [messagesPage, page]);
+
   const scrollToBottom = useCallback((force = false) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -136,30 +152,20 @@ export default function ChatView() {
   }, []);
 
   const loadMoreMessages = async () => {
-    if (loadingMore) return;
-    const scrollEl = scrollRef.current;
-    const oldHeight = scrollEl?.scrollHeight ?? 0;
+    if (loadingMore || !hasMore || isFetching) return;
     setLoadingMore(true);
-    const nextLimit = messageLimit + PAGE_SIZE;
-    setMessageLimit(nextLimit);
-    setTimeout(() => {
-      if (scrollEl) {
-        const newHeight = scrollEl.scrollHeight;
-        scrollEl.scrollTop += newHeight - oldHeight;
-      }
-      setLoadingMore(false);
-    }, 100);
+    setPage(prev => prev + 1);
   };
 
+  // Scroll to bottom on first load
   useEffect(() => {
-    if (messages.length > 0 && !initialScrollDone.current) {
-      initialScrollDone.current = true;
-      setTimeout(() => {
-        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }, 50);
+    if (allMessages.length > 0 && !initialLoadDone.current) {
+      initialLoadDone.current = true;
+      setTimeout(() => scrollToBottom(true), 100);
     }
-  }, [messages]);
+  }, [allMessages, scrollToBottom]);
 
+  // Typing users cleanup
   useEffect(() => {
     const interval = setInterval(() => {
       setTypingUsers((prev) => {
@@ -174,20 +180,17 @@ export default function ChatView() {
     return () => clearInterval(interval);
   }, []);
 
+  // WebSocket subscriptions
   useEffect(() => {
     const unsubscribe = subscribe((event) => {
       switch (event.type) {
         case "new_message":
-          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) => {
-            const prev = old ?? [];
-            if (prev.some((m) => m.id === event.payload.id)) return prev;
-            return [event.payload, ...prev];
-          });
+          setAllMessages(prev => [event.payload, ...prev]);
           setTimeout(() => scrollToBottom(), 50);
           break;
         case "delete_message":
-          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) =>
-            (old ?? []).map((m) => m.id === event.payload.id ? { ...m, deleted: true, content: "[deleted]" } : m)
+          setAllMessages(prev =>
+            prev.map((m) => m.id === event.payload.id ? { ...m, deleted: true, content: "[deleted]" } : m)
           );
           break;
         case "reaction_update":
@@ -206,7 +209,7 @@ export default function ChatView() {
       }
     });
     return unsubscribe;
-  }, [subscribe, queryClient, refetch, scrollToBottom, user?.username]);
+  }, [subscribe, refetch, scrollToBottom, user?.username]);
 
   const sendTyping = useCallback(() => {
     if (!user?.username) return;
@@ -233,11 +236,7 @@ export default function ChatView() {
         onSuccess: (msg) => {
           setContent("");
           setReplyTo(null);
-          queryClient.setQueryData(getListMessagesQueryKey(MSG_QUERY_PARAMS), (old: Message[] | undefined) => {
-            const prev = old ?? [];
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            return [msg, ...prev];
-          });
+          setAllMessages(prev => [msg, ...prev]);
           setTimeout(() => scrollToBottom(true), 50);
         }
       }
@@ -280,13 +279,13 @@ export default function ChatView() {
             variant="outline"
             size="sm"
             onClick={loadMoreMessages}
-            disabled={loadingMore || isFetching}
+            disabled={loadingMore || !hasMore || isFetching}
           >
-            {loadingMore ? "Loading older messages..." : "Load older messages"}
+            {loadingMore ? "Loading older messages..." : hasMore ? "Load older messages" : "No more messages"}
           </Button>
         </div>
         <div className={`max-w-4xl mx-auto flex flex-col justify-end min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
-          {[...messages].reverse().map((msg) => {
+          {allMessages.map((msg) => {
             const isOwn = msg.authorId === user?.id;
             const canDelete = isOwn || isAdmin || isOwner;
             const isMe = msg.content.startsWith("/me ");
