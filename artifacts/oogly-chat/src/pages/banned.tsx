@@ -1,34 +1,25 @@
-// client/src/pages/banned.tsx
+// pages/banned.tsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter"; // Change this line
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ban, Clock, LogOut } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface BanInfo {
-  banned: true;
-  reason: string;
-  expiresAt: string | null;
-}
-
 export default function BannedPage() {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
+  const [, setLocation] = useLocation(); // Change this line
+  const { logout, banInfo, clearBanInfo } = useAuth();
   const [timeRemaining, setTimeRemaining] = useState<string>("");
 
   useEffect(() => {
-    // Get ban info from localStorage or API response
-    const storedBan = localStorage.getItem("banInfo");
-    if (storedBan) {
-      setBanInfo(JSON.parse(storedBan));
+    if (!banInfo) {
+      setLocation("/login"); // Change this line
     }
-  }, []);
+  }, [banInfo, setLocation]); // Change this line
 
   useEffect(() => {
-    if (banInfo?.expiresAt && !banInfo?.banned === false) {
+    if (banInfo?.expiresAt) {
       const updateRemaining = () => {
         const expiry = new Date(banInfo.expiresAt);
         const now = new Date();
@@ -37,7 +28,7 @@ export default function BannedPage() {
           setTimeRemaining(formatDistanceToNow(expiry, { addSuffix: true }));
         } else {
           setTimeRemaining("Any moment now");
-          // Optionally attempt to re-authenticate
+          // Try to re-authenticate after ban expires
           setTimeout(() => {
             window.location.reload();
           }, 5000);
@@ -50,22 +41,14 @@ export default function BannedPage() {
     }
   }, [banInfo]);
 
-  const handleLogout = async () => {
-    await logout();
-    localStorage.removeItem("banInfo");
-    navigate("/login");
+  const handleLogout = () => {
+    logout();
+    clearBanInfo();
+    setLocation("/login"); // Change this line
   };
 
   if (!banInfo) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="w-96">
-          <CardContent className="pt-6">
-            <p>Loading ban information...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   const isPermanent = !banInfo.expiresAt;
