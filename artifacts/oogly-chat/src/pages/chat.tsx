@@ -109,7 +109,6 @@ export default function ChatView() {
 
   const API_BASE = "https://chatapi.zoeyaviation.com/api";
 
-  // Helper function to get auth headers
   const getHeaders = () => {
     const token = localStorage.getItem("oogly_token");
     return {
@@ -118,7 +117,6 @@ export default function ChatView() {
     };
   };
 
-  // Fetch messages function
   const fetchMessages = async (currentOffset: number, append = false) => {
     try {
       const response = await fetch(`${API_BASE}/messages?limit=${PAGE_SIZE}&offset=${currentOffset}`, {
@@ -128,10 +126,14 @@ export default function ChatView() {
       if (!response.ok) throw new Error("Failed to fetch messages");
       
       const data = await response.json();
-      const newMessages = Array.isArray(data) ? data : (data.messages || []);
+      let newMessages = Array.isArray(data) ? data : (data.messages || []);
+      
+      // Reverse so oldest first, newest last
+      newMessages = newMessages.reverse();
       
       if (append) {
-        setMessages(prev => [...prev, ...newMessages]);
+        // Load older messages - add to beginning
+        setMessages(prev => [...newMessages, ...prev]);
       } else {
         setMessages(newMessages);
       }
@@ -144,7 +146,6 @@ export default function ChatView() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     const loadMessages = async () => {
       setLoading(true);
@@ -155,7 +156,6 @@ export default function ChatView() {
     loadMessages();
   }, []);
 
-  // Scroll to bottom on first load
   useEffect(() => {
     if (messages.length > 0 && !initialLoadDone.current) {
       initialLoadDone.current = true;
@@ -184,7 +184,6 @@ export default function ChatView() {
     setLoadingMore(false);
   };
 
-  // Typing users cleanup
   useEffect(() => {
     const interval = setInterval(() => {
       setTypingUsers((prev) => {
@@ -199,12 +198,12 @@ export default function ChatView() {
     return () => clearInterval(interval);
   }, []);
 
-  // WebSocket subscriptions
   useEffect(() => {
     const unsubscribe = subscribe((event) => {
       switch (event.type) {
         case "new_message":
-          setMessages(prev => [event.payload, ...prev]);
+          // New message goes to the end (bottom)
+          setMessages(prev => [...prev, event.payload]);
           setTimeout(() => scrollToBottom(), 50);
           break;
         case "delete_message":
@@ -260,7 +259,7 @@ export default function ChatView() {
       if (!response.ok) throw new Error("Failed to send message");
       
       const newMessage = await response.json();
-      setMessages(prev => [newMessage, ...prev]);
+      setMessages(prev => [...prev, newMessage]);
       setContent("");
       setReplyTo(null);
       setTimeout(() => scrollToBottom(true), 50);
@@ -304,7 +303,6 @@ export default function ChatView() {
       
       if (!response.ok) throw new Error("Failed to toggle reaction");
       
-      // Refresh messages to get updated reactions
       fetchMessages(0, false);
       setOffset(PAGE_SIZE);
     } catch (error) {
@@ -349,7 +347,7 @@ export default function ChatView() {
             </Button>
           )}
         </div>
-        <div className={`max-w-4xl mx-auto flex flex-col justify-end min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
+        <div className={`max-w-4xl mx-auto flex flex-col min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
           {messages.map((msg) => {
             const isOwn = msg.authorId === user?.id;
             const canDelete = isOwn || isAdmin || isOwner;
