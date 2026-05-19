@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://chatapi.zoeyaviation.com/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://chatapi.zoeyaviation.com/api/:path*"
     }
   ]
 }
