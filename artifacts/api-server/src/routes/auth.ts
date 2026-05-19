@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, bansTable } from "@workspace/db";
+import { eq, and, or, sql } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import {
   sessions,
@@ -94,6 +94,29 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   if (!user) {
     res.status(401).json({ error: "Your username or password was incorrect." });
+    return;
+  }
+
+  // CHECK IF USER IS BANNED BEFORE PASSWORD VALIDATION
+  const [activeBan] = await db
+    .select()
+    .from(bansTable)
+    .where(
+      and(
+        eq(bansTable.userId, user.id),
+        or(
+          eq(bansTable.isPermanent, true),
+          sql`${bansTable.expiresAt} > NOW()`,
+        ),
+      ),
+    );
+
+  if (activeBan) {
+    res.status(403).json({
+      banned: true,
+      reason: activeBan.reason,
+      expiresAt: activeBan.expiresAt,
+    });
     return;
   }
 
