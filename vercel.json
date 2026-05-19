@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://chatapi.zoeyaviation.com*"
+      "source": "/api/auth*",
+      "destination": "https://chatapi.zoeyaviation.com*"
+      "source": "/api/auth/me",
+      "destination": "https://chatapi.zoeyaviation.com*"
     }
   ]
 }
