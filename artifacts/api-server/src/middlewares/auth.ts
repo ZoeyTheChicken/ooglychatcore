@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { db, usersTable } from "@workspace/db";
 import { bansTable, mutesTable } from "@workspace/db";
-import { and, eq, or, isNull, gt } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 // Simple in-memory session store: token -> userId
 // In production, use Redis or a DB-backed session table
@@ -45,6 +45,7 @@ export async function requireAuth(
   }
 
   // Check for an active ban — permanent OR not yet expired
+  // FIXED: Use sql`${bansTable.expiresAt} > NOW()` instead of gt()
   const [activeBan] = await db
     .select()
     .from(bansTable)
@@ -53,7 +54,7 @@ export async function requireAuth(
         eq(bansTable.userId, user.id),
         or(
           eq(bansTable.isPermanent, true),
-          gt(bansTable.expiresAt, new Date()),
+          sql`${bansTable.expiresAt} > NOW()`,
         ),
       ),
     );
@@ -69,6 +70,7 @@ export async function requireAuth(
   }
 
   // Check for an active mute — permanent OR not yet expired
+  // FIXED: Use sql`${mutesTable.expiresAt} > NOW()` instead of gt()
   const [activeMute] = await db
     .select()
     .from(mutesTable)
@@ -77,7 +79,7 @@ export async function requireAuth(
         eq(mutesTable.userId, user.id),
         or(
           eq(mutesTable.isPermanent, true),
-          gt(mutesTable.expiresAt, new Date()),
+          sql`${mutesTable.expiresAt} > NOW()`,
         ),
       ),
     );
