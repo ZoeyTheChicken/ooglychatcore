@@ -12,6 +12,7 @@ import Register from "@/pages/register";
 import ChatView from "@/pages/chat";
 import Settings from "@/pages/settings";
 import Appeal from "@/pages/appeal";
+import BannedPage from "@/pages/banned"; // Import the banned page
 
 import AdminStats from "@/pages/admin/stats";
 import AdminUsers from "@/pages/admin/users";
@@ -25,7 +26,7 @@ import AdminTroll from "@/pages/admin/troll";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
-  const { user, isLoading, isAdmin, isOwner } = useAuth();
+  const { user, isLoading, isAdmin, isOwner, isBanned } = useAuth();
 
   if (isLoading) {
     return (
@@ -36,6 +37,11 @@ function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: an
         </div>
       </div>
     );
+  }
+
+  // Check if user is banned first
+  if (isBanned) {
+    return <Redirect to="/banned" />;
   }
 
   if (!user) {
@@ -56,9 +62,12 @@ function AdminRedirect() {
 function Router() {
   return (
     <Switch>
+      {/* Public routes */}
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/banned" component={BannedPage} />
       
+      {/* Protected routes */}
       <Route path="/">
         <ProtectedRoute component={ChatView} />
       </Route>
@@ -69,6 +78,7 @@ function Router() {
         <ProtectedRoute component={Appeal} />
       </Route>
 
+      {/* Admin routes */}
       <Route path="/admin">
         <ProtectedRoute component={AdminRedirect} adminOnly />
       </Route>
@@ -97,6 +107,7 @@ function Router() {
         <ProtectedRoute component={AdminTroll} adminOnly />
       </Route>
       
+      {/* 404 */}
       <Route component={NotFound} />
     </Switch>
   );
