@@ -9,6 +9,7 @@ import {
   requireAuth,
 } from "../middlewares/auth";
 import { checkUsernameFilter } from "../lib/swear-filter";
+import { sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -19,29 +20,36 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { username, password } = parsed.data;
+  let { username, password } = parsed.data;
 
-  // Username filter check
+  // Store the original username for display
+  const originalUsername = username;
+  
+  // Convert to lowercase for case-insensitive checking
+  const lowercaseUsername = username.toLowerCase();
+
+  // Username filter check (check the original username for profanity)
   if (checkUsernameFilter(username)) {
     res.status(400).json({ error: "Username is not appropriate for Oogly Chat." });
     return;
   }
 
-  // Username format check
+  // Username format check (allow original case but enforce character rules)
   if (!/^[a-zA-Z0-9_-]{3,32}$/.test(username)) {
     res
       .status(400)
-      .json({ error: "Username must be 3-32 alphanumeric characters." });
+      .json({ error: "Username must be 3-32 alphanumeric characters, underscores, or hyphens." });
     return;
   }
 
+  // Check for existing username (case-insensitive)
   const existing = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, username));
+    .where(sql`LOWER(${usersTable.username}) = ${lowercaseUsername}`);
 
   if (existing.length > 0) {
-    res.status(400).json({ error: "Username has already been claimed." });
+    res.status(400).json({ error: "Username has already been claimed. (Case-insensitive check)" });
     return;
   }
 
@@ -50,7 +58,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const [user] = await db
     .insert(usersTable)
     .values({
-      username,
+      username: originalUsername, // Store the original case for display
       passwordHash,
       isAdmin: false,
       isOwner: false,
@@ -79,12 +87,16 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { username, password } = parsed.data;
+  let { username, password } = parsed.data;
 
+  // Convert to lowercase for case-insensitive lookup
+  const lowercaseUsername = username.toLowerCase();
+
+  // Find user case-insensitively
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, username));
+    .where(sql`LOWER(${usersTable.username}) = ${lowercaseUsername}`);
 
   if (!user) {
     res.status(401).json({ error: "Your username or password was incorrect." });
