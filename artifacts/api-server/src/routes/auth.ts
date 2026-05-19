@@ -24,7 +24,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   // Store the original username for display
   const originalUsername = username;
   
-  // Create a lowercase version for case-insensitive checking
+  // Convert to lowercase for case-insensitive checking
   const lowercaseUsername = username.toLowerCase();
 
   // Username filter check
@@ -41,7 +41,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  // Check for existing username (case-insensitive) - FIXED
+  // Check for existing username (case-insensitive) - ONLY FOR REGISTRATION
   const allUsers = await db.select().from(usersTable);
   const existing = allUsers.find(u => u.username.toLowerCase() === lowercaseUsername);
 
@@ -86,12 +86,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   let { username, password } = parsed.data;
 
-  // Convert to lowercase for case-insensitive lookup
-  const lowercaseUsername = username.toLowerCase();
-
-  // Find user case-insensitively - FIXED
-  const allUsers = await db.select().from(usersTable);
-  const user = allUsers.find(u => u.username.toLowerCase() === lowercaseUsername);
+  // CASE-SENSITIVE login - exact match only
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.username, username));
 
   if (!user) {
     res.status(401).json({ error: "Your username or password was incorrect." });
