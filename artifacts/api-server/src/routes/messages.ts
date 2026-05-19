@@ -136,17 +136,20 @@ router.post("/messages", requireAuth, async (req, res): Promise<void> => {
 
   const { content, replyToId } = parsed.data;
 
-  const filterResult = checkFilter(content);
-  if (filterResult.flagged) {
-    res.status(400).json({
-      error: "Your message contains prohibited content.",
-      matches: filterResult.matches,
-    });
-    return;
-  }
+ const { content, replyToId } = parsed.data;
 
-  let replyToContent: string | undefined;
-  let replyToUsername: string | undefined;
+// Add 'await' here
+const filterResult = await checkFilter(content);
+if (filterResult.flagged) {
+  res.status(400).json({
+    error: "Your message contains prohibited content.",
+    matches: filterResult.matches,
+  });
+  return;
+}
+
+let replyToContent: string | undefined;
+let replyToUsername: string | undefined;
 
   if (replyToId) {
     const [replyMsg] = await db
