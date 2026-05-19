@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWs } from "@/contexts/WsContext";
