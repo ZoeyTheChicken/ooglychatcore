@@ -46,6 +46,7 @@ const RAW_BANNED = [
   "f@g",
   "f@ggot",
   "gay", "g@y", "gayy", "lesbian",
+  "shat", "niger", "white trailer trash", "goon"
 ];
 
 // ---------------------------------------------------------------------------
