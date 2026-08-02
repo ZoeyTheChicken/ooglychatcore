@@ -40,6 +40,22 @@ export interface User {
   compactMode?: boolean | null;
   /** @nullable */
   lastSeen?: string | null;
+  /** @nullable */
+  accentTheme?: string | null;
+  /** @nullable */
+  fontScale?: number | null;
+  /** @nullable */
+  fontSize?: number | null;
+  /** @nullable */
+  borderWidth?: number | null;
+  /** @nullable */
+  spacingScale?: number | null;
+  /** @nullable */
+  messageBg?: string | null;
+  /** @nullable */
+  messageOwnBg?: string | null;
+  /** @nullable */
+  fontFamily?: string | null;
   createdAt: string;
 }
 
@@ -63,6 +79,14 @@ export interface SettingsUpdate {
   notificationsEnabled?: boolean;
   soundsEnabled?: boolean;
   compactMode?: boolean;
+  accentTheme?: string;
+  fontScale?: number;
+  fontSize?: number;
+  borderWidth?: number;
+  spacingScale?: number;
+  messageBg?: string;
+  messageOwnBg?: string;
+  fontFamily?: string;
 }
 
 export interface ReactionSummary {

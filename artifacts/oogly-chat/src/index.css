@@ -64,6 +64,100 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Personalization variables */
+  --custom-accent: var(--accent);
+  --custom-accent-foreground: var(--accent-foreground);
+  --custom-primary: var(--primary);
+  --custom-primary-foreground: var(--primary-foreground);
+  --message-bg: var(--card);
+  --message-own-bg: var(--primary);
+  --message-own-foreground: var(--primary-foreground);
+  --font-size-base: 1rem;
+  --font-scale: 1;
+  --border-width: 1px;
+  --spacing-scale: 1;
+}
+
+/* Personalization utility classes */
+html {
+  font-size: calc(var(--font-size-base) * var(--font-scale));
+}
+
+.custom-message-bg {
+  background-color: hsl(var(--message-bg));
+}
+
+.custom-message-own-bg {
+  background-color: hsl(var(--message-own-bg));
+  color: hsl(var(--message-own-foreground));
+}
+
+.custom-accent-text {
+  color: hsl(var(--custom-accent));
+}
+
+.custom-accent-bg {
+  background-color: hsl(var(--custom-accent));
+  color: hsl(var(--custom-accent-foreground));
+}
+
+.custom-primary-text {
+  color: hsl(var(--custom-primary));
+}
+
+.custom-primary-bg {
+  background-color: hsl(var(--custom-primary));
+  color: hsl(var(--custom-primary-foreground));
+}
+
+.custom-border {
+  border-width: var(--border-width);
+}
+
+.custom-spacing {
+  --spacing-base: 0.25rem;
+  gap: calc(var(--spacing-base) * var(--spacing-scale));
+}
+
+/* Red racing accent theme class */
+.theme-racing {
+  --custom-accent: 0 72% 55%;
+  --custom-accent-foreground: 0 0% 100%;
+  --custom-primary: 0 72% 55%;
+  --custom-primary-foreground: 0 0% 100%;
+}
+
+/* Blue accent theme class */
+.theme-blue {
+  --custom-accent: 210 80% 55%;
+  --custom-accent-foreground: 0 0% 100%;
+  --custom-primary: 210 80% 55%;
+  --custom-primary-foreground: 0 0% 100%;
+}
+
+/* Green accent theme class */
+.theme-green {
+  --custom-accent: 142 70% 45%;
+  --custom-accent-foreground: 0 0% 100%;
+  --custom-primary: 142 70% 45%;
+  --custom-primary-foreground: 0 0% 100%;
+}
+
+/* Purple accent theme class */
+.theme-purple {
+  --custom-accent: 270 70% 55%;
+  --custom-accent-foreground: 0 0% 100%;
+  --custom-primary: 270 70% 55%;
+  --custom-primary-foreground: 0 0% 100%;
+}
+
+/* Orange accent theme class */
+.theme-orange {
+  --custom-accent: 25 80% 55%;
+  --custom-accent-foreground: 0 0% 100%;
+  --custom-primary: 25 80% 55%;
+  --custom-primary-foreground: 0 0% 100%;
 }
 
 /* LIGHT MODE */
@@ -113,10 +207,23 @@
   --chart-4: 280 65% 55%;
   --chart-5: 0 72% 51%;
 
-  --app-font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  /* Personalization variables */
+  --custom-accent: var(--accent);
+  --custom-accent-foreground: var(--accent-foreground);
+  --custom-primary: var(--primary);
+  --custom-primary-foreground: var(--primary-foreground);
+  --message-bg: var(--card);
+  --message-own-bg: var(--primary);
+  --message-own-foreground: var(--primary-foreground);
+  --font-size-base: 1rem;
+  --font-scale: 1;
+  --border-width: 1px;
+  --spacing-scale: 1;
+
+  --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --radius: .625rem;
+  --radius: .5rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); 
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); 
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
@@ -169,40 +276,54 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 252 22% 7%;
-  --foreground: 260 15% 94%;
-  --card: 252 18% 11%;
-  --card-foreground: 260 15% 94%;
-  --card-border: 252 14% 18%;
-  --sidebar: 252 20% 9%;
-  --sidebar-foreground: 260 12% 88%;
-  --sidebar-border: 252 14% 16%;
-  --sidebar-primary: 265 85% 68%;
-  --sidebar-primary-foreground: 252 30% 8%;
-  --sidebar-accent: 265 40% 18%;
-  --sidebar-accent-foreground: 265 70% 88%;
-  --sidebar-ring: 265 85% 68%;
-  --border: 252 12% 18%;
-  --input: 252 14% 14%;
-  --primary: 265 85% 68%;
-  --primary-foreground: 252 30% 8%;
-  --secondary: 252 14% 16%;
-  --secondary-foreground: 260 10% 78%;
-  --muted: 252 12% 14%;
-  --muted-foreground: 260 8% 58%;
-  --accent: 172 50% 45%;
-  --accent-foreground: 252 30% 8%;
-  --destructive: 0 72% 51%;
+  /* Professional dark theme with red racing accents */
+  --background: 0 0% 8%;
+  --foreground: 0 0% 95%;
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 15%;
+  --sidebar: 0 0% 6%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-border: 0 0% 12%;
+  --sidebar-primary: 0 72% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 60% 12%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-ring: 0 72% 55%;
+  --border: 0 0% 15%;
+  --input: 0 0% 12%;
+  --primary: 0 72% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 0 0% 90%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 55%;
+  --accent: 0 72% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;
-  --popover: 220 14% 12%;
-  --popover-foreground: 210 20% 92%;
-  --popover-border: 220 10% 22%;
-  --ring: 265 85% 68%;
-  --chart-1: 265 85% 68%;
-  --chart-2: 142 70% 45%;
-  --chart-3: 38 90% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 0 72% 51%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 15%;
+  --ring: 0 72% 55%;
+  --chart-1: 0 72% 55%;
+  --chart-2: 0 60% 45%;
+  --chart-3: 0 72% 35%;
+  --chart-4: 0 65% 25%;
+  --chart-5: 0 72% 55%;
+
+  /* Personalization variables */
+  --custom-accent: var(--accent);
+  --custom-accent-foreground: var(--accent-foreground);
+  --custom-primary: var(--primary);
+  --custom-primary-foreground: var(--primary-foreground);
+  --message-bg: var(--card);
+  --message-own-bg: var(--primary);
+  --message-own-foreground: var(--primary-foreground);
+  --font-size-base: 1rem;
+  --font-scale: 1;
+  --border-width: 1px;
+  --spacing-scale: 1;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
