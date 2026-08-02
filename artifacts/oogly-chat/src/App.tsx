@@ -22,7 +22,6 @@ import AdminMutes from "@/pages/admin/mutes";
 import AdminAppeals from "@/pages/admin/appeals";
 import AdminAnnouncements from "@/pages/admin/announcements";
 import AdminLogs from "@/pages/admin/logs";
-import AdminTroll from "@/pages/admin/troll";
 
 const queryClient = new QueryClient();
 
@@ -105,9 +104,6 @@ function Router() {
       </Route>
       <Route path="/admin/logs">
         <ProtectedRoute component={AdminLogs} adminOnly />
-      </Route>
-      <Route path="/admin/troll">
-        <ProtectedRoute component={AdminTroll} adminOnly />
       </Route>
       
       {/* 404 */}

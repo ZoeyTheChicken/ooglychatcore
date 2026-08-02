@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Send, Reply, X, Trash2, SmilePlus, Info, Copy, Check, ShieldAlert } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
 import { checkFilter, previewLocalFilter } from "@/lib/swear-filter";
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"];
@@ -95,7 +94,6 @@ export default function ChatView() {
   const [content, setContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<Map<string, number>>(new Map());
-  const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [tosBlocked, setTosBlocked] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -222,11 +220,6 @@ case "reaction_update":
             setTypingUsers((prev) => new Map(prev).set(event.payload.username, event.payload.timestamp));
           }
           break;
-        case "troll_effect":
-          if (event.payload.targetUsername === user?.username || event.payload.targetUsername === "*") {
-            setActiveTroll(event.payload.effect as TrollEffect);
-          }
-          break;
       }
     });
     return unsubscribe;
@@ -340,7 +333,6 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
 
   return (
     <ChatLayout>
-      <TrollOverlay effect={activeTroll} onDone={() => setActiveTroll(null)} />
       <TosToast visible={tosBlocked} onDone={() => setTosBlocked(false)} />
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 oogly-chat-canvas" ref={scrollRef}>

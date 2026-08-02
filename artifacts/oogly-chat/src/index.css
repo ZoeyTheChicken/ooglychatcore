@@ -349,17 +349,11 @@ html {
 
 /* App shell & chat atmosphere */
 .oogly-app-shell {
-  background:
-    radial-gradient(ellipse 80% 50% at 0% 0%, hsl(265 85% 68% / 0.12), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, hsl(172 50% 45% / 0.08), transparent 45%),
-    hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 .dark .oogly-app-shell {
-  background:
-    radial-gradient(ellipse 70% 45% at 0% 0%, hsl(265 85% 68% / 0.15), transparent 55%),
-    radial-gradient(ellipse 50% 35% at 100% 80%, hsl(172 50% 45% / 0.06), transparent 40%),
-    hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 .oogly-chat-canvas {
@@ -368,11 +362,10 @@ html {
     linear-gradient(90deg, hsl(var(--border) / 0.2) 1px, transparent 1px);
   background-size: 48px 48px;
   background-position: center top;
-  mask-image: linear-gradient(to bottom, black 0%, black 85%, transparent 100%);
 }
 
 .oogly-message-own {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(265 75% 58%));
+  background: hsl(var(--primary));
   box-shadow: 0 4px 24px -4px hsl(var(--primary) / 0.45);
 }
 
@@ -389,10 +382,7 @@ html {
 }
 
 .oogly-auth-panel {
-  background:
-    radial-gradient(circle at 20% 30%, hsl(265 85% 68% / 0.35), transparent 45%),
-    radial-gradient(circle at 80% 70%, hsl(172 50% 45% / 0.25), transparent 40%),
-    linear-gradient(160deg, hsl(252 22% 12%), hsl(265 30% 18%));
+  background: hsl(252 22% 12%);
 }
 
 .oogly-compose-bar {
@@ -401,27 +391,7 @@ html {
   border-top: 1px solid hsl(var(--border) / 0.6);
 }
 
-@keyframes troll-wobble {
-  0% { transform: rotate(-2deg) scale(0.98); }
-  25% { transform: rotate(2deg) scale(1.02); }
-  50% { transform: rotate(-3deg) scale(0.95); }
-  75% { transform: rotate(3deg) scale(1.05); }
-  100% { transform: rotate(-2deg) scale(0.98); }
-}
 
-@keyframes troll-color-shift {
-  0% { color: #ff0000; }
-  25% { color: #00ff00; }
-  50% { color: #0000ff; }
-  75% { color: #ff00ff; }
-  100% { color: #ff0000; }
-}
-
-.troll-message {
-  animation: troll-wobble 2s infinite ease-in-out, troll-color-shift 5s infinite linear;
-  display: inline-block;
-  font-weight: bold;
-}
 
 /**
  * Using the elevate system.
@@ -535,51 +505,7 @@ html {
   }
 }
 
-/* ── Troll effects ─────────────────────────────── */
-@keyframes earthquake {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  10%       { transform: translate(-6px, -4px) rotate(-0.5deg); }
-  20%       { transform: translate(6px, 5px) rotate(0.5deg); }
-  30%       { transform: translate(-8px, 3px) rotate(-1deg); }
-  40%       { transform: translate(8px, -5px) rotate(1deg); }
-  50%       { transform: translate(-4px, 6px) rotate(-0.5deg); }
-  60%       { transform: translate(5px, -4px) rotate(0.5deg); }
-  70%       { transform: translate(-7px, 5px) rotate(-1deg); }
-  80%       { transform: translate(7px, -3px) rotate(1deg); }
-  90%       { transform: translate(-3px, 4px) rotate(-0.5deg); }
-}
-.troll-earthquake {
-  animation: earthquake 0.1s infinite;
-}
-
-@keyframes disco-flash {
-  0%   { background: rgba(255, 0, 128, 0.35); }
-  14%  { background: rgba(255, 165, 0, 0.35); }
-  28%  { background: rgba(255, 255, 0, 0.35); }
-  42%  { background: rgba(0, 255, 100, 0.35); }
-  57%  { background: rgba(0, 200, 255, 0.35); }
-  71%  { background: rgba(100, 0, 255, 0.35); }
-  85%  { background: rgba(255, 0, 200, 0.35); }
-  100% { background: rgba(255, 0, 128, 0.35); }
-}
-.disco-flash {
-  position: fixed;
-  inset: 0;
-  animation: disco-flash 0.35s infinite linear;
-  pointer-events: none;
-}
-
 /* ── Fun chat features ─────────────────────────── */
-@keyframes troll-wobble {
-  0%, 100% { transform: rotate(-2deg) scale(1.02); }
-  50%       { transform: rotate(2deg) scale(0.98); }
-}
-.troll-message {
-  display: inline-block;
-  animation: troll-wobble 0.5s infinite;
-  color: hsl(var(--destructive));
-}
-
 @keyframes typing-bounce {
   0%, 60%, 100% { transform: translateY(0); }
   30%            { transform: translateY(-4px); }

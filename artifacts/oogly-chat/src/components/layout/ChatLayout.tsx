@@ -34,7 +34,7 @@ export function ChatLayout({ children }: { children: ReactNode }) {
               <MessageCircle className="w-5 h-5 text-primary" strokeWidth={2.25} />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-lg font-bold tracking-tight text-primary">
                 Oogly Chat
               </h1>
               <p className="text-[11px] text-muted-foreground font-medium">Community · Live</p>
@@ -60,7 +60,7 @@ export function ChatLayout({ children }: { children: ReactNode }) {
                 <span
                   className="w-8 h-8 rounded-lg text-[11px] font-bold flex items-center justify-center shrink-0 text-primary-foreground"
                   style={{
-                    background: `linear-gradient(135deg, hsl(${avatarHue(u.username)} 65% 45%), hsl(${avatarHue(u.username)} 55% 35%))`,
+                    background: `hsl(${avatarHue(u.username)} 60% 40%)`,
                   }}
                 >
                   {userInitials(u.username)}
@@ -90,7 +90,7 @@ export function ChatLayout({ children }: { children: ReactNode }) {
               <span
                 className="w-9 h-9 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 text-primary-foreground"
                 style={{
-                  background: `linear-gradient(135deg, hsl(${avatarHue(user.username)} 65% 48%), hsl(${avatarHue(user.username)} 55% 38%))`,
+                  background: `hsl(${avatarHue(user.username)} 60% 42%)`,
                 }}
               >
                 {userInitials(user.username)}
