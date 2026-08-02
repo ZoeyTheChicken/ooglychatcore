@@ -78,45 +78,45 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 30% 96%;
-  --foreground: 220 20% 15%;
+  --background: 260 30% 97%;
+  --foreground: 250 25% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 220 20% 15%;
-  --card-border: 210 20% 88%;
-  --sidebar: 210 25% 94%;
-  --sidebar-foreground: 220 20% 20%;
-  --sidebar-border: 210 20% 85%;
-  --sidebar-primary: 210 75% 48%;
+  --card-foreground: 250 25% 12%;
+  --card-border: 260 18% 90%;
+  --sidebar: 260 22% 95%;
+  --sidebar-foreground: 250 20% 18%;
+  --sidebar-border: 260 16% 88%;
+  --sidebar-primary: 262 72% 52%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 75% 92%;
-  --sidebar-accent-foreground: 210 75% 30%;
-  --sidebar-ring: 210 75% 48%;
-  --border: 210 20% 88%;
-  --input: 210 20% 85%;
-  --primary: 210 75% 48%;
+  --sidebar-accent: 262 55% 92%;
+  --sidebar-accent-foreground: 262 60% 32%;
+  --sidebar-ring: 262 72% 52%;
+  --border: 260 16% 88%;
+  --input: 260 14% 92%;
+  --primary: 262 72% 52%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 92%;
-  --secondary-foreground: 220 20% 25%;
-  --muted: 210 20% 94%;
-  --muted-foreground: 215 15% 45%;
-  --accent: 210 75% 48%;
+  --secondary: 260 18% 93%;
+  --secondary-foreground: 250 20% 22%;
+  --muted: 260 16% 94%;
+  --muted-foreground: 250 12% 42%;
+  --accent: 172 55% 38%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 20% 15%;
-  --popover-border: 210 20% 88%;
-  --ring: 210 75% 48%;
-  --chart-1: 210 75% 48%;
-  --chart-2: 142 70% 40%;
+  --popover-foreground: 250 25% 12%;
+  --popover-border: 260 16% 88%;
+  --ring: 262 72% 52%;
+  --chart-1: 262 72% 52%;
+  --chart-2: 172 55% 38%;
   --chart-3: 38 90% 50%;
   --chart-4: 280 65% 55%;
   --chart-5: 0 72% 51%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
+  --app-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius: .625rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); 
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); 
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
@@ -169,36 +169,36 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 220 15% 10%;
-  --foreground: 210 20% 92%;
-  --card: 220 13% 14%;
-  --card-foreground: 210 20% 92%;
-  --card-border: 220 10% 22%;
-  --sidebar: 220 14% 12%;
-  --sidebar-foreground: 210 18% 85%;
-  --sidebar-border: 220 10% 20%;
-  --sidebar-primary: 210 75% 58%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 75% 25%;
-  --sidebar-accent-foreground: 210 75% 85%;
-  --sidebar-ring: 210 75% 58%;
-  --border: 220 10% 22%;
-  --input: 220 10% 22%;
-  --primary: 210 75% 58%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 12% 20%;
-  --secondary-foreground: 210 15% 75%;
-  --muted: 220 12% 18%;
-  --muted-foreground: 215 15% 55%;
-  --accent: 210 75% 58%;
-  --accent-foreground: 0 0% 100%;
+  --background: 252 22% 7%;
+  --foreground: 260 15% 94%;
+  --card: 252 18% 11%;
+  --card-foreground: 260 15% 94%;
+  --card-border: 252 14% 18%;
+  --sidebar: 252 20% 9%;
+  --sidebar-foreground: 260 12% 88%;
+  --sidebar-border: 252 14% 16%;
+  --sidebar-primary: 265 85% 68%;
+  --sidebar-primary-foreground: 252 30% 8%;
+  --sidebar-accent: 265 40% 18%;
+  --sidebar-accent-foreground: 265 70% 88%;
+  --sidebar-ring: 265 85% 68%;
+  --border: 252 12% 18%;
+  --input: 252 14% 14%;
+  --primary: 265 85% 68%;
+  --primary-foreground: 252 30% 8%;
+  --secondary: 252 14% 16%;
+  --secondary-foreground: 260 10% 78%;
+  --muted: 252 12% 14%;
+  --muted-foreground: 260 8% 58%;
+  --accent: 172 50% 45%;
+  --accent-foreground: 252 30% 8%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --popover: 220 14% 12%;
   --popover-foreground: 210 20% 92%;
   --popover-border: 220 10% 22%;
-  --ring: 210 75% 58%;
-  --chart-1: 210 75% 58%;
+  --ring: 265 85% 68%;
+  --chart-1: 265 85% 68%;
   --chart-2: 142 70% 45%;
   --chart-3: 38 90% 55%;
   --chart-4: 280 65% 60%;
@@ -224,6 +224,60 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+/* App shell & chat atmosphere */
+.oogly-app-shell {
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, hsl(265 85% 68% / 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, hsl(172 50% 45% / 0.08), transparent 45%),
+    hsl(var(--background));
+}
+
+.dark .oogly-app-shell {
+  background:
+    radial-gradient(ellipse 70% 45% at 0% 0%, hsl(265 85% 68% / 0.15), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 100% 80%, hsl(172 50% 45% / 0.06), transparent 40%),
+    hsl(var(--background));
+}
+
+.oogly-chat-canvas {
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.2) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center top;
+  mask-image: linear-gradient(to bottom, black 0%, black 85%, transparent 100%);
+}
+
+.oogly-message-own {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(265 75% 58%));
+  box-shadow: 0 4px 24px -4px hsl(var(--primary) / 0.45);
+}
+
+.oogly-message-other {
+  background: hsl(var(--card) / 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 0 2px 12px -4px hsl(252 30% 4% / 0.25);
+}
+
+.oogly-sidebar-glass {
+  background: hsl(var(--sidebar) / 0.72);
+  backdrop-filter: blur(16px);
+}
+
+.oogly-auth-panel {
+  background:
+    radial-gradient(circle at 20% 30%, hsl(265 85% 68% / 0.35), transparent 45%),
+    radial-gradient(circle at 80% 70%, hsl(172 50% 45% / 0.25), transparent 40%),
+    linear-gradient(160deg, hsl(252 22% 12%), hsl(265 30% 18%));
+}
+
+.oogly-compose-bar {
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid hsl(var(--border) / 0.6);
 }
 
 @keyframes troll-wobble {

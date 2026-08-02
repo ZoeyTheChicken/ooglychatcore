@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWs } from "@/contexts/WsContext";
 import { ChatLayout } from "@/components/layout/ChatLayout";
@@ -8,7 +8,7 @@ import { Send, Reply, X, Trash2, SmilePlus, Info, Copy, Check, ShieldAlert } fro
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { TrollOverlay, TrollEffect } from "@/components/TrollOverlay";
-import { checkFilter } from "@/lib/swear-filter";
+import { checkFilter, previewLocalFilter } from "@/lib/swear-filter";
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "😡", "🔥", "✅", "👀", "🎉", "🥀", "☹️", "👎", "💀"];
 const PAGE_SIZE = 50;
@@ -98,6 +98,7 @@ export default function ChatView() {
   const [activeTroll, setActiveTroll] = useState<TrollEffect | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [tosBlocked, setTosBlocked] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -241,31 +242,31 @@ case "reaction_update":
 
 const handleSend = async (e: React.FormEvent) => {
   e.preventDefault();
-  if (!content.trim()) return;
+  if (!content.trim() || isSending) return;
 
-  const result = await checkFilter(content);
-  if (result.flagged) {
-    setTosBlocked(false);
-    requestAnimationFrame(() => setTosBlocked(true));
-    return;
-  }
-
+  setIsSending(true);
   try {
+    const result = await checkFilter(content, user?.username ? `user:${user.username}` : undefined);
+    if (result.flagged) {
+      setTosBlocked(false);
+      requestAnimationFrame(() => setTosBlocked(true));
+      return;
+    }
+
     const response = await fetch(`${API_BASE}/messages`, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify({ content, replyToId: replyTo?.id }),
     });
-    
+
     if (!response.ok) throw new Error("Failed to send message");
-    
-    // Don't add the message here - WebSocket will broadcast it
-    // Just clear the input and reply
+
     setContent("");
     setReplyTo(null);
-    // Scroll will happen when WebSocket adds the message
   } catch (error) {
     console.error("Failed to send message:", error);
+  } finally {
+    setIsSending(false);
   }
 };
 
@@ -319,11 +320,19 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
   const typingList = [...typingUsers.keys()];
   const isCompact = user?.compactMode;
 
+  const localPreview = useMemo(() => {
+    if (!content.trim()) return null;
+    return previewLocalFilter(content);
+  }, [content]);
+
   if (loading) {
     return (
       <ChatLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-muted-foreground">Loading messages...</div>
+        <div className="flex items-center justify-center h-full oogly-chat-canvas">
+          <div className="flex flex-col items-center gap-3 px-6 py-8 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm">
+            <div className="w-9 h-9 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <div className="text-sm text-muted-foreground font-medium">Loading messages…</div>
+          </div>
         </div>
       </ChatLayout>
     );
@@ -334,20 +343,21 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
       <TrollOverlay effect={activeTroll} onDone={() => setActiveTroll(null)} />
       <TosToast visible={tosBlocked} onDone={() => setTosBlocked(false)} />
 
-      <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
-        <div className="max-w-4xl mx-auto mb-4 flex justify-center">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 oogly-chat-canvas" ref={scrollRef}>
+        <div className="max-w-3xl mx-auto mb-4 flex justify-center">
           {hasMore && (
             <Button
               variant="outline"
               size="sm"
+              className="rounded-full bg-card/70 backdrop-blur border-border/70"
               onClick={loadMoreMessages}
               disabled={loadingMore}
             >
-              {loadingMore ? "Loading older messages..." : "Load older messages"}
+              {loadingMore ? "Loading older messages…" : "Load older messages"}
             </Button>
           )}
         </div>
-        <div className={`max-w-4xl mx-auto flex flex-col min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
+        <div className={`max-w-3xl mx-auto flex flex-col min-h-full pb-2 ${isCompact ? "space-y-0.5" : "space-y-2"}`}>
           {messages.map((msg) => {
             const isOwn = msg.authorId === user?.id;
             const canDelete = isOwn || isAdmin || isOwner;
@@ -388,8 +398,8 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
                   </div>
                 ) : (
                   <div className={`flex items-end gap-2 max-w-[80%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
-                    <div className={`rounded-2xl px-4 py-2 ${isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm shadow-sm"}`}>
-                      {!isOwn && <div className="text-xs font-semibold text-primary mb-0.5">{msg.authorUsername}</div>}
+                    <div className={`rounded-2xl px-4 py-2.5 ${isOwn ? "oogly-message-own text-primary-foreground rounded-br-md" : "oogly-message-other rounded-bl-md"}`}>
+                      {!isOwn && <div className="text-[11px] font-bold text-primary mb-1 tracking-wide">{msg.authorUsername}</div>}
                       {imageUrl ? (
                         <img src={imageUrl} alt="img" className="rounded max-w-[280px] max-h-64 object-contain" />
                       ) : (
@@ -440,9 +450,9 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
         </div>
       </div>
 
-      <div className="p-4 bg-background border-t border-border">
+      <div className="p-4 md:px-6 oogly-compose-bar">
         {replyTo && (
-          <div className="mb-2 flex items-center justify-between bg-muted/30 px-3 py-2 rounded-md border border-border">
+          <div className="mb-3 flex items-center justify-between bg-muted/40 px-3 py-2.5 rounded-xl border border-border/60 max-w-3xl mx-auto">
             <div className="flex items-center gap-2 text-sm text-muted-foreground truncate flex-1 pr-4">
               <Reply className="w-4 h-4 shrink-0" />
               <span className="font-semibold text-foreground shrink-0">Replying to {replyTo.authorUsername}:</span>
@@ -451,14 +461,20 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
             <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => setReplyTo(null)}><X className="w-4 h-4" /></Button>
           </div>
         )}
-        <form onSubmit={handleSend} className="flex items-end gap-2 max-w-4xl mx-auto">
+        {localPreview?.flagged && (
+          <div className="mb-2 max-w-3xl mx-auto flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
+            <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+            <span>This message may violate community rules. Cloud safety check still runs when you send.</span>
+          </div>
+        )}
+        <form onSubmit={handleSend} className="flex items-end gap-2 max-w-3xl mx-auto">
           <div className="flex-1 relative">
             <Input
               value={content}
               onChange={(e) => { setContent(e.target.value); sendTyping(); }}
               placeholder={user?.isMuted ? "You are muted" : "Message… (/me, **bold**, or paste an image URL)"}
-              disabled={user?.isMuted}
-              className="flex-1 bg-input border-transparent focus-visible:ring-1 rounded-2xl pr-14"
+              disabled={user?.isMuted || isSending}
+              className={`flex-1 bg-card/80 border-border/60 focus-visible:ring-primary/40 rounded-2xl pr-14 min-h-11 shadow-sm ${localPreview?.flagged ? "border-amber-500/50 ring-1 ring-amber-500/30" : ""}`}
               autoFocus
               data-testid="input-message"
             />
@@ -468,11 +484,11 @@ const handleReaction = async (messageId: number, emoji: string, hasReacted: bool
               </span>
             )}
           </div>
-          <Button type="submit" size="icon" disabled={!content.trim() || content.length > 500 || user?.isMuted} className="shrink-0 rounded-full h-10 w-10" data-testid="button-send-message">
-            <Send className="w-4 h-4" />
+          <Button type="submit" size="icon" disabled={!content.trim() || content.length > 500 || user?.isMuted || isSending} className="shrink-0 rounded-xl h-11 w-11 shadow-md shadow-primary/20" data-testid="button-send-message">
+            <Send className={`w-4 h-4 ${isSending ? "opacity-50" : ""}`} />
           </Button>
         </form>
-        <p className="text-[10px] text-muted-foreground/50 mt-1.5 text-center max-w-4xl mx-auto">
+        <p className="text-[10px] text-muted-foreground/60 mt-2 text-center max-w-3xl mx-auto font-medium">
           <strong>/me</strong> for actions · <strong>**bold**</strong> · paste an image URL for inline preview
         </p>
       </div>
